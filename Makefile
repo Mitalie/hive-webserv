@@ -3,7 +3,7 @@ NAME := webserv
 # Directories
 OBJDIR := obj
 SRCDIR := src
-INCDIRS := include
+INCDIRS := src
 
 # Default compiler flags
 CXX := c++
