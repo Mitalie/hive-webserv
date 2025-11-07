@@ -13,6 +13,7 @@ def_CPPFLAGS := -MMD -MP $(addprefix -I ,$(INCDIRS))
 # Project source files
 SRCS := $(addprefix $(SRCDIR)/,\
 	main.cpp \
+	Poll.cpp \
 )
 
 # Project targets
