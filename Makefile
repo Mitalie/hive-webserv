@@ -26,6 +26,7 @@ BINS := $(NAME)
 TESTDIR := testbin
 TESTS := $(addprefix $(TESTDIR)/,\
 	example \
+	callbackIO \
 )
 TEST_SRCS := $(TESTS:%=$(SRCDIR)/%.cpp)
 # - Exclude main.o from OBJS as each test comes with its own main
