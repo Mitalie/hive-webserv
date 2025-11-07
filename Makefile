@@ -14,6 +14,7 @@ def_CPPFLAGS := -MMD -MP $(addprefix -I ,$(INCDIRS))
 SRCS := $(addprefix $(SRCDIR)/,\
 	main.cpp \
 	Poll.cpp \
+	ReadWriteFD.cpp \
 )
 
 # Project targets
