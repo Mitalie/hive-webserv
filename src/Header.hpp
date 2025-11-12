@@ -19,7 +19,7 @@ public:
 	// Throws std::runtime_error on parse failure.
 	Header(const std::string_view &raw); // parse in constructor and throw on error
 
-	// Note: parsing is done in the constructor `Header(const std::string&)` which throws on error.
+	// Note: parsing is done in the constructor `Header(const std::string_view&)` which throws on error.
 
 	// Accessors
 	const std::string &method() const;	// returns stored method_

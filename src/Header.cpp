@@ -46,6 +46,7 @@ Header::Header(const std::string_view &raw) // parse constructor
 		throw std::runtime_error("invalid request-line: expected 'METHOD PATH VERSION'"); // throw on error
 
 	// Parse header fields
+	// Note: caller is responsible for removing empty line that marks end of headers before passing to constructor
 	while (std::getline(in, line)) // read each header line
 	{
 		line = trim(line);								  // trim whitespace
