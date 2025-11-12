@@ -60,6 +60,8 @@ void Poll::addFd(int fd, Callback readable, Callback writable)
 	fdMap[fd] = {
 		.readable = readable,
 		.writable = writable,
+		.readableInterest = false,
+		.writableInterest = false,
 	};
 	// TODO: register with poll mechanism
 }
