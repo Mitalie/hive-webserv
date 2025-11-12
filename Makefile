@@ -13,6 +13,8 @@ def_CPPFLAGS := -MMD -MP $(addprefix -I ,$(INCDIRS))
 # Project source files
 SRCS := $(addprefix $(SRCDIR)/,\
 	main.cpp \
+	Poll.cpp \
+	ReadWriteFD.cpp \
 )
 
 # Project targets
@@ -24,6 +26,7 @@ BINS := $(NAME)
 TESTDIR := testbin
 TESTS := $(addprefix $(TESTDIR)/,\
 	example \
+	callbackIO \
 )
 TEST_SRCS := $(TESTS:%=$(SRCDIR)/%.cpp)
 # - Exclude main.o from OBJS as each test comes with its own main
