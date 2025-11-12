@@ -1,6 +1,7 @@
 #include "ReadWriteFD.hpp"
 
 #include <cstddef>
+#include <span>
 #include <stdexcept>
 
 #include <sys/types.h>
@@ -43,7 +44,7 @@ void ReadWriteFD::onReadable()
 	if (bytesRead < 0)
 		// TODO: proper error handling
 		throw std::runtime_error("read");
-	readCallback(readBuffer, bytesRead);
+	readCallback(std::span(readBuffer, bytesRead));
 }
 
 void ReadWriteFD::startWriting(WritableDrainCallback callback)
@@ -59,11 +60,11 @@ void ReadWriteFD::stopWriting()
 	poll.setWritableInterest(fd, false);
 }
 
-size_t ReadWriteFD::queueWrite(const char *data, size_t length)
+size_t ReadWriteFD::queueWrite(std::span<const char> data)
 {
-	if (writeBuffer.empty() && length)
+	if (writeBuffer.empty() && data.size())
 		poll.setWritableInterest(fd, true);
-	writeBuffer.insert(writeBuffer.end(), data, data + length);
+	writeBuffer.insert(writeBuffer.end(), data.begin(), data.end());
 	return writeBuffer.size();
 }
 

@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <iostream>
+#include <span>
 #include <string>
 #include <string_view>
 
@@ -38,10 +39,10 @@ int main()
 	bool doneR = false;
 	ReadWriteFD in(poll, 0);
 	in.startReading(
-		[&doneR, &in](const char *data, size_t length)
+		[&doneR, &in](std::span<const char> data)
 		{
-			std::cout << "\x1b[33mRead block of " << length << " bytes: >\x1b[31m" << std::string_view(data, length) << "\x1b[33m<\x1b[0m" << std::endl;
-			if (length == 0)
+			std::cout << "\x1b[33mRead block of " << data.size() << " bytes: >\x1b[31m" << std::string_view(data.begin(), data.end()) << "\x1b[33m<\x1b[0m" << std::endl;
+			if (data.size() == 0)
 			{
 				doneR = true;
 				in.stopReading();
@@ -53,7 +54,7 @@ int main()
 	std::string outputData = "some example data, and more example data.\n";
 	const size_t outputChunkSize = 4;
 	const size_t outputBufSize = outputChunkSize * 2;
-	out.queueWrite(outputData.data(), outputBufSize);
+	out.queueWrite(std::span(outputData.data(), outputBufSize));
 	std::cout << "\x1b[33mWrite buffer has " << outputBufSize << " bytes queued\x1b[0m" << std::endl;
 	size_t outputPos = outputBufSize;
 	bool doneW = false;
@@ -68,7 +69,7 @@ int main()
 				outputPos += outputChunkSize;
 				bufferSize += outputChunkSize;
 				space -= outputChunkSize;
-				out.queueWrite(chunk.data(), chunk.length());
+				out.queueWrite(std::span(chunk.data(), chunk.length()));
 			}
 			if (outputPos >= outputData.length() && bufferSize == 0)
 				doneW = true;

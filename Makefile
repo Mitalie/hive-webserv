@@ -7,7 +7,7 @@ INCDIRS := src
 
 # Default compiler flags
 CXX := c++
-def_CXXFLAGS := -Wall -Wextra -Werror -g -std=c++17
+def_CXXFLAGS := -Wall -Wextra -Werror -g -std=c++20
 def_CPPFLAGS := -MMD -MP $(addprefix -I ,$(INCDIRS))
 
 # Project source files
