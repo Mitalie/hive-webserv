@@ -13,6 +13,7 @@ def_CPPFLAGS := -MMD -MP $(addprefix -I ,$(INCDIRS))
 # Project source files
 SRCS := $(addprefix $(SRCDIR)/,\
 	main.cpp \
+	CallbackQueue.cpp \
 	Header.cpp \
 	Poll.cpp \
 	ReadWriteFD.cpp \
