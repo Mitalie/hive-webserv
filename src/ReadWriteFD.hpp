@@ -20,7 +20,7 @@ class Poll;
 class ReadWriteFD : public IReadable, public IWritable
 {
 public:
-	ReadWriteFD(Poll &poll, int fd);
+	ReadWriteFD(int fd);
 	ReadWriteFD(const ReadWriteFD &other) = delete;
 	ReadWriteFD &operator=(const ReadWriteFD &other) = delete;
 	~ReadWriteFD();
@@ -33,7 +33,6 @@ public:
 	virtual size_t queueWrite(std::span<const char> data) override;
 
 private:
-	Poll &poll;
 	int fd;
 
 	static const size_t maxReadSize = 4096;

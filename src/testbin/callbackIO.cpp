@@ -33,11 +33,10 @@ int main()
 {
 	assert(_read != nullptr);
 	assert(_write != nullptr);
-	Poll poll;
 
 	// For input, just process whatever we receive
 	bool doneR = false;
-	ReadWriteFD in(poll, 0);
+	ReadWriteFD in(0);
 	in.startReading(
 		[&doneR, &in](std::span<const char> data)
 		{
@@ -50,7 +49,7 @@ int main()
 		});
 
 	// For output, we could just queue the entire message, but let's instead keep the buffer size limited
-	ReadWriteFD out(poll, 1);
+	ReadWriteFD out(1);
 	std::string outputData = "some example data, and more example data.\n";
 	const size_t outputChunkSize = 4;
 	const size_t outputBufSize = outputChunkSize * 2;
@@ -79,7 +78,7 @@ int main()
 	// Pump the FDs with poll until both operations are done
 	while (!doneR || !doneW)
 	{
-		poll.doPoll();
+		Poll::doPoll();
 		sleep(1);
 	}
 }

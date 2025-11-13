@@ -9,10 +9,10 @@
 
 #include "Poll.hpp"
 
-ReadWriteFD::ReadWriteFD(Poll &poll, int fd)
-	: poll(poll), fd(fd)
+ReadWriteFD::ReadWriteFD(int fd)
+	: fd(fd)
 {
-	poll.addFd(
+	Poll::addFd(
 		fd,
 		[this]()
 		{ onReadable(); },
@@ -22,19 +22,19 @@ ReadWriteFD::ReadWriteFD(Poll &poll, int fd)
 
 ReadWriteFD::~ReadWriteFD()
 {
-	poll.removeFd(fd);
+	Poll::removeFd(fd);
 }
 
 void ReadWriteFD::startReading(ReadableDataCallback callback)
 {
 	readCallback = callback;
-	poll.setReadableInterest(fd, true);
+	Poll::setReadableInterest(fd, true);
 }
 
 void ReadWriteFD::stopReading()
 {
 	readCallback = {};
-	poll.setReadableInterest(fd, false);
+	Poll::setReadableInterest(fd, false);
 }
 
 void ReadWriteFD::onReadable()
@@ -51,19 +51,19 @@ void ReadWriteFD::startWriting(WritableDrainCallback callback)
 {
 	writeCallback = callback;
 	if (!writeBuffer.empty())
-		poll.setWritableInterest(fd, true);
+		Poll::setWritableInterest(fd, true);
 }
 
 void ReadWriteFD::stopWriting()
 {
 	writeCallback = {};
-	poll.setWritableInterest(fd, false);
+	Poll::setWritableInterest(fd, false);
 }
 
 size_t ReadWriteFD::queueWrite(std::span<const char> data)
 {
 	if (writeBuffer.empty() && data.size())
-		poll.setWritableInterest(fd, true);
+		Poll::setWritableInterest(fd, true);
 	writeBuffer.insert(writeBuffer.end(), data.begin(), data.end());
 	return writeBuffer.size();
 }
@@ -77,5 +77,5 @@ void ReadWriteFD::onWritable()
 	writeBuffer.erase(writeBuffer.begin(), writeBuffer.begin() + bytesWritten);
 	writeCallback(writeBuffer.size());
 	if (writeBuffer.empty())
-		poll.setWritableInterest(fd, false);
+		Poll::setWritableInterest(fd, false);
 }
