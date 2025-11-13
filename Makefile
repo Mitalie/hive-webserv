@@ -15,6 +15,7 @@ SRCS := $(addprefix $(SRCDIR)/,\
 	main.cpp \
 	CallbackQueue.cpp \
 	Header.cpp \
+	HeaderReader.cpp \
 	Poll.cpp \
 	ReadWriteFD.cpp \
 	Config.cpp \
