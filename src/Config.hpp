@@ -45,7 +45,7 @@ public:
 	PortServerMap parse(const std::string &filename);
 private:
 	ServerConfig parseServer(class Tokenizer &tokenizer);
-	RouteConfig parseLocation(class Tokenizer &tokenizer);
+	RouteConfig parseLocation(class Tokenizer &tokenizer, const std::string &locationPath);
 	// Add more helpers as needed
 };
 

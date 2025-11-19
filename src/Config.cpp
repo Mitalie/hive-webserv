@@ -127,174 +127,127 @@ PortServerMap ConfigParser::parse(const std::string &filename)
 ServerConfig ConfigParser::parseServer(Tokenizer &tokenizer)
 {
 	ServerConfig server;
-	std::vector<Token> tokens;
-	while (tokenizer.hasNext())
-	{
-		tokens.clear();
-		// Gather tokens for one statement/block
-		while (tokenizer.hasNext())
-		{
-			Token t = tokenizer.nextToken();
-			if (t.type == TokenType::Symbol && (t.value == ";" || t.value == "{" || t.value == "}"))
-			{
-				tokens.push_back(t);
-				break;
-			}
-			tokens.push_back(t);
+	while (tokenizer.hasNext()) {
+		Token t = tokenizer.nextToken();
+		if (t.type == TokenType::Symbol && t.value == "}") {
+			return server;
 		}
-		if (tokens.empty())
+		if (t.type == TokenType::String && t.value == "location") {
+			Token pathToken = tokenizer.nextToken();
+			if (pathToken.type != TokenType::String)
+				throw std::runtime_error("Malformed location statement: missing path");
+			Token braceToken = tokenizer.nextToken();
+			if (braceToken.type != TokenType::Symbol || braceToken.value != "{")
+				throw std::runtime_error("Malformed location statement: missing opening brace");
+			RouteConfig route = parseLocation(tokenizer, pathToken.value);
+			server.routes.push_back(route);
 			continue;
-		if (tokens.size() == 1 && tokens[0].type == TokenType::Symbol && tokens[0].value == "}")
-			break;
-		// Remove all semicolon tokens for statement validation
-		std::vector<Token> filtered;
-		for (size_t i = 0; i < tokens.size(); ++i)
-		{
-			if (!(tokens[i].type == TokenType::Symbol && tokens[i].value == ";"))
-				filtered.push_back(tokens[i]);
 		}
-		// Debug output: print filtered tokens for each statement
-		std::cout << "Statement tokens: ";
-		for (size_t i = 0; i < filtered.size(); ++i)
-		{
-			std::cout << filtered[i].value << " ";
-		}
-		std::cout << std::endl;
-		// listen host port (or listen host:port)
-		if (filtered[0].type == TokenType::String && filtered[0].value == "listen")
-		{
-			if (filtered.size() == 3 && filtered[1].type == TokenType::String && filtered[2].type == TokenType::String)
-			{
-				server.listener.host = filtered[1].value;
-				server.listener.port = filtered[2].value;
-			}
-			else if (filtered.size() == 2 && filtered[1].type == TokenType::String)
-			{
-				// Split host:port
-				size_t colon = filtered[1].value.find(":");
-				if (colon != std::string::npos)
-				{
-					server.listener.host = filtered[1].value.substr(0, colon);
-					server.listener.port = filtered[1].value.substr(colon + 1);
-				}
-				else
-				{
+		if (t.type == TokenType::String && t.value == "listen") {
+			Token hostToken = tokenizer.nextToken();
+			if (hostToken.type != TokenType::String)
+				throw std::runtime_error("Malformed listen statement: missing host");
+			Token portToken = tokenizer.nextToken();
+			if (portToken.type == TokenType::String) {
+				server.listener.host = hostToken.value;
+				server.listener.port = portToken.value;
+				Token semi = tokenizer.nextToken();
+				if (semi.type != TokenType::Symbol || semi.value != ";")
+					throw std::runtime_error("Malformed listen statement: missing semicolon");
+			} else if (portToken.type == TokenType::Symbol && portToken.value == ";") {
+				size_t colon = hostToken.value.find(":");
+				if (colon != std::string::npos) {
+					server.listener.host = hostToken.value.substr(0, colon);
+					server.listener.port = hostToken.value.substr(colon + 1);
+				} else {
 					throw std::runtime_error("Malformed listen statement: missing port");
 				}
+			} else {
+				throw std::runtime_error("Malformed listen statement");
 			}
+			continue;
 		}
-		// server_name name1 [name2 ...]
-		else if (filtered[0].type == TokenType::String && filtered[0].value == "server_name" && filtered.size() == 2)
-		{
-			for (size_t i = 1; i < filtered.size(); ++i)
-				if (filtered[i].type == TokenType::String)
-					server.serverNames.push_back(filtered[i].value);
+		if (t.type == TokenType::String && t.value == "server_name") {
+			Token nameToken = tokenizer.nextToken();
+			if (nameToken.type != TokenType::String)
+				throw std::runtime_error("Malformed server_name statement");
+			server.serverNames.push_back(nameToken.value);
+			Token semi = tokenizer.nextToken();
+			if (semi.type != TokenType::Symbol || semi.value != ";")
+				throw std::runtime_error("Malformed server_name statement: missing semicolon");
+			continue;
 		}
-		// error_page code path
-		else if (filtered[0].type == TokenType::String && filtered[0].value == "error_page" && filtered.size() == 3 && filtered[1].type == TokenType::String && filtered[2].type == TokenType::String)
-		{
-			server.errorPages[std::stoi(filtered[1].value)] = filtered[2].value;
+		if (t.type == TokenType::String && t.value == "error_page") {
+			Token codeToken = tokenizer.nextToken();
+			Token pathToken = tokenizer.nextToken();
+			if (codeToken.type != TokenType::String || pathToken.type != TokenType::String)
+				throw std::runtime_error("Malformed error_page statement");
+			server.errorPages[std::stoi(codeToken.value)] = pathToken.value;
+			Token semi = tokenizer.nextToken();
+			if (semi.type != TokenType::Symbol || semi.value != ";")
+				throw std::runtime_error("Malformed error_page statement: missing semicolon");
+			continue;
 		}
-		// client_max_body_size size
-		else if (filtered[0].type == TokenType::String && filtered[0].value == "client_max_body_size" && filtered.size() == 2 && filtered[1].type == TokenType::String)
-		{
-			server.clientMaxBodySize = std::stoul(filtered[1].value); // Always bytes
+		if (t.type == TokenType::String && t.value == "client_max_body_size") {
+			Token sizeToken = tokenizer.nextToken();
+			if (sizeToken.type != TokenType::String)
+				throw std::runtime_error("Malformed client_max_body_size statement");
+			server.clientMaxBodySize = std::stoul(sizeToken.value);
+			Token semi = tokenizer.nextToken();
+			if (semi.type != TokenType::Symbol || semi.value != ";")
+				throw std::runtime_error("Malformed client_max_body_size statement: missing semicolon");
+			continue;
 		}
-		// location path {
-		else if (
-			filtered.size() == 3 &&
-			filtered[0].type == TokenType::String && filtered[0].value == "location" &&
-			filtered[1].type == TokenType::String &&
-			filtered[2].type == TokenType::Symbol && filtered[2].value == "{")
-		{
-			std::cout << "Entering parseLocation for path: " << filtered[1].value << std::endl;
-			server.routes.push_back(parseLocation(tokenizer));
-		}
-		else
-		{
-			std::cout << "Malformed server statement. Filtered tokens:" << std::endl;
-			for (size_t i = 0; i < filtered.size(); ++i)
-			{
-				std::cout << "  [" << i << "] type: " << (filtered[i].type == TokenType::String ? "String" : "Symbol") << ", value: '" << filtered[i].value << "'" << std::endl;
-			}
-			throw std::runtime_error("Invalid or malformed server statement");
-		}
+		// Skip unknown tokens and statements
+		if (t.type == TokenType::Symbol && t.value == "{")
+			continue;
 	}
 	return server;
 }
 
-RouteConfig ConfigParser::parseLocation(Tokenizer &tokenizer)
+RouteConfig ConfigParser::parseLocation(Tokenizer &tokenizer, const std::string &locationPath)
 {
-	std::cout << "parseLocation called" << std::endl;
 	RouteConfig route;
-	std::vector<Token> tokens;
-	while (tokenizer.hasNext())
-	{
-		tokens.clear();
-		while (tokenizer.hasNext())
-		{
-			Token t = tokenizer.nextToken();
-			if (t.type == TokenType::Symbol && (t.value == ";" || t.value == "{" || t.value == "}"))
-			{
-				tokens.push_back(t);
-				break;
-			}
-			tokens.push_back(t);
+	route.path = locationPath;
+	while (tokenizer.hasNext()) {
+		Token t = tokenizer.nextToken();
+		if (t.type == TokenType::Symbol && t.value == "}") {
+			return route;
 		}
-		if (tokens.empty())
+		if (t.type == TokenType::String && (t.value == "root" || t.value == "index" || t.value == "autoindex" || t.value == "upload_store" || t.value == "redirect")) {
+			Token valueToken = tokenizer.nextToken();
+			Token semi = tokenizer.nextToken();
+			if (semi.type != TokenType::Symbol || semi.value != ";")
+				throw std::runtime_error("Malformed location statement: missing semicolon");
+			if (t.value == "root") route.root = valueToken.value;
+			else if (t.value == "index") route.index = valueToken.value;
+			else if (t.value == "autoindex") route.autoindex = (valueToken.value == "on");
+			else if (t.value == "upload_store") route.uploadStore = valueToken.value;
+			else if (t.value == "redirect") route.redirect = valueToken.value;
 			continue;
-		if (tokens.size() == 1 && tokens[0].type == TokenType::Symbol && tokens[0].value == "}")
-			break;
-		// Remove all semicolon tokens for statement validation
-		std::vector<Token> filtered;
-		for (size_t i = 0; i < tokens.size(); ++i)
-		{
-			if (!(tokens[i].type == TokenType::Symbol && tokens[i].value == ";"))
-				filtered.push_back(tokens[i]);
 		}
-		// root path
-		if (filtered[0].type == TokenType::String && filtered[0].value == "root" && filtered.size() == 2 && filtered[1].type == TokenType::String)
-		{
-			route.root = filtered[1].value;
+		if (t.type == TokenType::String && (t.value == "allowed_methods" || t.value == "methods")) {
+			while (true) {
+				Token methodToken = tokenizer.nextToken();
+				if (methodToken.type == TokenType::Symbol && methodToken.value == ";") break;
+				if (methodToken.type != TokenType::String)
+					throw std::runtime_error("Malformed allowed_methods statement");
+				route.allowedMethods.push_back(methodToken.value);
+			}
+			continue;
 		}
-		// index file
-		else if (filtered[0].type == TokenType::String && filtered[0].value == "index" && filtered.size() == 2 && filtered[1].type == TokenType::String)
-		{
-			route.index = filtered[1].value;
+		if (t.type == TokenType::String && t.value == "cgi_interpreter") {
+			Token extToken = tokenizer.nextToken();
+			Token pathToken = tokenizer.nextToken();
+			Token semi = tokenizer.nextToken();
+			if (extToken.type != TokenType::String || pathToken.type != TokenType::String || semi.type != TokenType::Symbol || semi.value != ";")
+				throw std::runtime_error("Malformed cgi_interpreter statement");
+			route.cgiInterpreters[extToken.value] = pathToken.value;
+			continue;
 		}
-		// autoindex on|off
-		else if (filtered[0].type == TokenType::String && filtered[0].value == "autoindex" && filtered.size() == 2 && filtered[1].type == TokenType::String)
-		{
-			route.autoindex = (filtered[1].value == "on");
-		}
-		// methods method1 [method2 ...]
-		else if (filtered[0].type == TokenType::String && filtered[0].value == "methods" && filtered.size() >= 2)
-		{
-			for (size_t i = 1; i < filtered.size(); ++i)
-				if (filtered[i].type == TokenType::String)
-					route.allowedMethods.push_back(filtered[i].value);
-		}
-		// return code url
-		else if (filtered[0].type == TokenType::String && filtered[0].value == "return" && filtered.size() == 3 && filtered[1].type == TokenType::String && filtered[2].type == TokenType::String)
-		{
-			route.redirect = filtered[2].value;
-		}
-		// cgi_ext ext interpreter
-		else if (filtered[0].type == TokenType::String && filtered[0].value == "cgi_ext" && filtered.size() == 3 && filtered[1].type == TokenType::String && filtered[2].type == TokenType::String)
-		{
-			std::string ext = filtered[1].value;
-			std::string interpreter = filtered[2].value;
-			route.cgiInterpreters[ext] = interpreter;
-		}
-		// upload_store path
-		else if (filtered[0].type == TokenType::String && filtered[0].value == "upload_store" && filtered.size() == 2 && filtered[1].type == TokenType::String)
-		{
-			route.uploadStore = filtered[1].value;
-		}
-		else
-		{
-			throw std::runtime_error("Invalid or malformed location statement");
-		}
+		// Skip unknown tokens and statements
+		if (t.type == TokenType::Symbol && t.value == "{")
+			continue;
 	}
 	return route;
 }

@@ -38,23 +38,31 @@ int main() {
                 }
                 for (size_t r = 0; r < server.routes.size(); ++r) {
                     const RouteConfig& route = server.routes[r];
-                    std::cout << "    Location: " << route.root << "\n";
-                    std::cout << "      Methods: ";
-                    if (route.allowedMethods.empty()) std::cout << "(none)";
-                    for (size_t m = 0; m < route.allowedMethods.size(); ++m) {
-                        std::cout << route.allowedMethods[m];
-                        if (m + 1 < route.allowedMethods.size()) std::cout << ", ";
+                    std::cout << "    Location: " << route.path << "\n";
+                    if (!route.root.empty())
+                        std::cout << "      Root: " << route.root << "\n";
+                    if (!route.allowedMethods.empty()) {
+                        std::cout << "      Methods: ";
+                        for (size_t m = 0; m < route.allowedMethods.size(); ++m) {
+                            std::cout << route.allowedMethods[m];
+                            if (m + 1 < route.allowedMethods.size()) std::cout << ", ";
+                        }
+                        std::cout << "\n";
                     }
-                    std::cout << "\n      Index: " << route.index << "\n";
+                    if (!route.index.empty())
+                        std::cout << "      Index: " << route.index << "\n";
                     std::cout << "      Autoindex: " << (route.autoindex ? "on" : "off") << "\n";
-                    std::cout << "      Redirect: " << route.redirect << "\n";
-                    std::cout << "      Upload store: " << route.uploadStore << "\n";
-                    std::cout << "      CGI Interpreters: ";
-                    if (route.cgiInterpreters.empty()) std::cout << "(none)";
-                    for (std::map<std::string, std::string>::const_iterator cit = route.cgiInterpreters.begin(); cit != route.cgiInterpreters.end(); ++cit) {
-                        std::cout << cit->first << "->" << cit->second << " ";
+                    if (!route.redirect.empty())
+                        std::cout << "      Redirect: " << route.redirect << "\n";
+                    if (!route.uploadStore.empty())
+                        std::cout << "      Upload store: " << route.uploadStore << "\n";
+                    if (!route.cgiInterpreters.empty()) {
+                        std::cout << "      CGI Interpreters: ";
+                        for (std::map<std::string, std::string>::const_iterator cit = route.cgiInterpreters.begin(); cit != route.cgiInterpreters.end(); ++cit) {
+                            std::cout << cit->first << "->" << cit->second << " ";
+                        }
+                        std::cout << "\n";
                     }
-                    std::cout << "\n";
                 }
             }
         }
