@@ -13,6 +13,7 @@ struct RouteConfig
 	std::string root;									// Filesystem root for this route
 	std::string index;									// Default file for directory requests
 	bool autoindex;										// Directory listing enabled/disabled
+	int redirectCode;                                   // Redirect status code (0 if none)
 	std::string redirect;								// Redirect URL (empty if none)
 	std::map<std::string, std::string> cgiInterpreters; // File extension -> interpreter path
 	std::string uploadStore;							// Directory for uploaded files
