@@ -16,6 +16,8 @@ SRCS := $(addprefix $(SRCDIR)/,\
 	Header.cpp \
 	Poll.cpp \
 	ReadWriteFD.cpp \
+	Config.cpp \
+	Tokenizer.cpp \
 )
 
 # Project targets
@@ -29,6 +31,7 @@ TESTS := $(addprefix $(TESTDIR)/,\
 	example \
 	callbackIO \
 	headerParser \
+	config_test \
 )
 TEST_SRCS := $(TESTS:%=$(SRCDIR)/%.cpp)
 # - Exclude main.o from OBJS as each test comes with its own main
