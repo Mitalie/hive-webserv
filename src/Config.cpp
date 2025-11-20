@@ -9,106 +9,14 @@
 #include <stdexcept>  // std::runtime_error
 #include <iterator>	  // std::istreambuf_iterator
 
-enum class TokenType
-{
-	String,
-	Open,
-	Close,
-	Semicolon
-};
-struct Token
-{
-	TokenType type;
-	std::string value;
-};
-
-class Tokenizer
-{
-public:
-	Tokenizer(std::istream &in)
-	{
-		std::string fileContent((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
-		input = fileContent;
-		pos = 0;
-	}
-	bool hasNext()
-	{
-		skipWhitespace();
-		return pos < input.size();
-	}
-	Token nextToken()
-	{
-		skipWhitespace();
-		if (pos >= input.size())
-			throw std::runtime_error("Tokenizer: no more tokens available");
-		char c = input[pos];
-		if (c == '"')
-		{
-			size_t start = ++pos;
-			while (pos < input.size() && input[pos] != '"')
-				++pos;
-			std::string val = input.substr(start, pos - start);
-			++pos;
-			return Token{TokenType::String, val};
-		}
-		else if (isSymbol(c))
-		{
-			++pos;
-			if (c == '{')
-				return Token{TokenType::Open, "{"};
-			else if (c == '}')
-				return Token{TokenType::Close, "}"};
-			else if (c == ';')
-				return Token{TokenType::Semicolon, ";"};
-		}
-		size_t start = pos;
-		while (pos < input.size() && !isWhitespace(input[pos]) && !isSymbol(input[pos]))
-			++pos;
-		std::string val = input.substr(start, pos - start);
-		// If we hit a comment, skip the rest of the line
-		if (pos < input.size() && input[pos] == '#')
-		{
-			while (pos < input.size() && input[pos] != '\n')
-				++pos;
-		}
-		return Token{TokenType::String, val};
-	}
-
-private:
-	std::string input;
-	size_t pos;
-	void skipWhitespace()
-	{
-		while (pos < input.size())
-		{
-			while (pos < input.size() && isWhitespace(input[pos]))
-				++pos;
-			// Skip comments
-			if (pos < input.size() && input[pos] == '#')
-			{
-				while (pos < input.size() && input[pos] != '\n')
-					++pos;
-				// Skip the newline after the comment
-				if (pos < input.size() && input[pos] == '\n')
-					++pos;
-			}
-			else
-			{
-				break;
-			}
-		}
-	}
-	bool isWhitespace(char c) const { return c == ' ' || c == '\t' || c == '\r' || c == '\n'; }
-	bool isSymbol(char c) const { return c == '{' || c == '}' || c == ';'; }
-};
-
+#include "Tokenizer.hpp"
 PortServerMap ConfigParser::parse(const std::string &filename)
 {
 	std::ifstream file(filename.c_str());
 	if (!file.is_open())
 		throw std::runtime_error("Could not open config file");
-	Tokenizer tokenizer(file);
-	PortServerMap serversByPort;
+	PortServerMap serversByPort; // Declare and initialize the variable here
+	Tokenizer tokenizer(file); // Now streams directly from file
 	while (tokenizer.hasNext())
 	{
 		Token token = tokenizer.nextToken();
