@@ -24,6 +24,7 @@ SRCS := $(addprefix $(SRCDIR)/,\
 	ReadWriteFD.cpp \
 	Config.cpp \
 	Tokenizer.cpp \
+	CgiHandler.cpp \
 )
 
 # Project targets
@@ -40,6 +41,7 @@ TESTS := $(addprefix $(TESTDIR)/,\
 	config_test \
 	clientHandler \
 	listener \
+	cgi \
 )
 TEST_SRCS := $(TESTS:%=$(SRCDIR)/%.cpp)
 # - Exclude main.o from OBJS as each test comes with its own main

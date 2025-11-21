@@ -17,8 +17,11 @@ ClientHandler::ClientHandler(int fd)
 		  fd,
 		  [this](std::span<const char> newData)
 		  { socketReadCallback(newData); },
+		  {}, // TODO: handle EOF
+		  {}, // TODO: handle read error
 		  [this](size_t bufferSize)
-		  { socketWriteCallback(bufferSize); })
+		  { socketWriteCallback(bufferSize); },
+		  {}) // TODO: handle write error
 {
 	leftoverData.reserve(socket.maxReadSize);
 	updateWakeup();

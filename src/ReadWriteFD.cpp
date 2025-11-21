@@ -2,7 +2,6 @@
 
 #include <cstddef>
 #include <span>
-#include <stdexcept>
 #include <utility>
 
 #include <sys/types.h>
@@ -13,17 +12,25 @@
 ReadWriteFD::ReadWriteFD(
 	int fd,
 	ReadableDataCallback readCallback,
-	WritableDrainCallback writeCallback)
+	ReadableEofCallback readEofCallback,
+	ReadableErrorCallback readErrorCallback,
+	WritableDrainCallback writeCallback,
+	WritableErrorCallback writeErrorCallback)
 	: fd(fd),
 	  readCallback(std::move(readCallback)),
-	  writeCallback(std::move(writeCallback))
+	  readEofCallback(std::move(readEofCallback)),
+	  readErrorCallback(std::move(readErrorCallback)),
+	  writeCallback(std::move(writeCallback)),
+	  writeErrorCallback(std::move(writeErrorCallback))
 {
 	Poll::addFd(
 		fd,
 		[this]()
 		{ onReadable(); },
 		[this]()
-		{ onWritable(); });
+		{ onWritable(); },
+		[this]()
+		{ onError(); });
 }
 
 ReadWriteFD::~ReadWriteFD()
@@ -45,10 +52,22 @@ void ReadWriteFD::onReadable()
 {
 	char readBuffer[maxReadSize];
 	ssize_t bytesRead = ::read(fd, readBuffer, maxReadSize);
+
 	if (bytesRead < 0)
-		// TODO: proper error handling
-		throw std::runtime_error("read");
-	readCallback(std::span(readBuffer, bytesRead));
+	{
+		if (readErrorCallback)
+			readErrorCallback();
+	}
+	else if (bytesRead == 0)
+	{
+		if (readEofCallback)
+			readEofCallback();
+	}
+	else
+	{
+		if (readCallback)
+			readCallback(std::span(readBuffer, bytesRead));
+	}
 }
 
 size_t ReadWriteFD::queueWrite(std::span<const char> data)
@@ -62,11 +81,27 @@ size_t ReadWriteFD::queueWrite(std::span<const char> data)
 void ReadWriteFD::onWritable()
 {
 	ssize_t bytesWritten = ::write(fd, writeBuffer.data(), writeBuffer.size());
+
 	if (bytesWritten < 0)
-		// TODO: proper error handling
-		throw std::runtime_error("write");
+	{
+		if (writeErrorCallback)
+			writeErrorCallback();
+		return;
+	}
+
 	writeBuffer.erase(writeBuffer.begin(), writeBuffer.begin() + bytesWritten);
-	writeCallback(writeBuffer.size());
+
+	if (writeCallback)
+		writeCallback(writeBuffer.size());
+
 	if (writeBuffer.empty())
 		Poll::setWritableInterest(fd, false);
+}
+
+void ReadWriteFD::onError()
+{
+	if (readErrorCallback)
+		readErrorCallback();
+	if (writeErrorCallback)
+		writeErrorCallback();
 }
