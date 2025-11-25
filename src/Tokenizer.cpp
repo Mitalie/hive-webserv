@@ -2,15 +2,10 @@
 
 Tokenizer::Tokenizer(std::istream &in) : in(in), buffer(0), hasBuffered(false) {}
 
-bool Tokenizer::hasNext() {
-    skipWhitespace();
-    return in && !in.eof();
-}
-
 Token Tokenizer::nextToken() {
     skipWhitespace();
     if (!in || in.eof())
-        throw std::runtime_error("Tokenizer: no more tokens available");
+        return Token{TokenType::Eof, ""};
     char c = peek();
     if (c == '"') {
         get(); // consume opening quote

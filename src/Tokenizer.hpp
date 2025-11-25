@@ -7,7 +7,8 @@ enum class TokenType {
     String,
     Open,
     Close,
-    Semicolon
+    Semicolon,
+    Eof
 };
 struct Token {
     TokenType type;
@@ -17,7 +18,6 @@ struct Token {
 class Tokenizer {
 public:
     Tokenizer(std::istream &in);
-    bool hasNext();
     Token nextToken();
 private:
     std::istream &in;

@@ -4,7 +4,25 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <unordered_map>
 #include <cstddef>
+
+enum class ServerDirective {
+	Listen,
+	ServerName,
+	ErrorPage,
+	ClientMaxBodySize,
+	Location,
+	Unknown
+};
+
+static const std::unordered_map<std::string, ServerDirective> serverDirectiveMap = {
+	{"listen", ServerDirective::Listen},
+	{"server_name", ServerDirective::ServerName},
+	{"error_page", ServerDirective::ErrorPage},
+	{"client_max_body_size", ServerDirective::ClientMaxBodySize},
+	{"location", ServerDirective::Location}
+};
 
 struct RouteConfig
 {
@@ -36,6 +54,10 @@ struct ServerConfig
 	std::map<int, std::string> errorPages; // Error code to file path
 	size_t clientMaxBodySize;			   // Max body size in bytes
 	std::vector<RouteConfig> routes;	   // All location blocks
+	void handleListen(class Tokenizer &tokenizer);
+	void handleServerName(class Tokenizer &tokenizer);
+	void handleErrorPage(class Tokenizer &tokenizer);
+	void handleClientMaxBodySize(class Tokenizer &tokenizer);
 };
 
 typedef std::map<hostPort, std::vector<ServerConfig>> PortServerMap;

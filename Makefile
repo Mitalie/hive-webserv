@@ -17,6 +17,7 @@ SRCS := $(addprefix $(SRCDIR)/,\
 	Poll.cpp \
 	ReadWriteFD.cpp \
 	Config.cpp \
+	Tokenizer.cpp \
 )
 
 # Project targets
