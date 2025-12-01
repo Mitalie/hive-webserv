@@ -6,6 +6,9 @@
 
 #include <sys/poll.h>
 
+// Singleton instance
+Poll Poll::instance;
+
 // TODO: persist pollfd vector instead of rebuilding, and store idx in map
 // TODO: or switch to epoll?
 // TODO: handle POLLERR and/or POLLHUP?
@@ -23,11 +26,11 @@ Poll::~Poll()
 
 void Poll::doPoll()
 {
-	size_t numFds = fdMap.size();
+	size_t numFds = instance.fdMap.size();
 	// Build pollfd vector for system call
 	std::unique_ptr<pollfd[]> fds(new pollfd[numFds]);
 	size_t fdsIdx = 0;
-	for (auto fdCallbacks : fdMap)
+	for (auto fdCallbacks : instance.fdMap)
 	{
 		pollfd &current = fds[fdsIdx++];
 		current.fd = fdCallbacks.first;
@@ -48,18 +51,20 @@ void Poll::doPoll()
 		// TODO: what if one callback modifies an entry that a later callback uses?
 		pollfd &current = fds[fdsIdx++];
 		if (current.revents & POLLIN)
-			fdMap[current.fd].readable();
+			instance.fdMap[current.fd].readable();
 		if (current.revents & POLLOUT)
-			fdMap[current.fd].writable();
+			instance.fdMap[current.fd].writable();
 	}
 }
 
 void Poll::addFd(int fd, Callback readable, Callback writable)
 {
 	// TODO: error if exists
-	fdMap[fd] = {
+	instance.fdMap[fd] = {
 		.readable = readable,
 		.writable = writable,
+		.readableInterest = false,
+		.writableInterest = false,
 	};
 	// TODO: register with poll mechanism
 }
@@ -67,16 +72,16 @@ void Poll::addFd(int fd, Callback readable, Callback writable)
 void Poll::removeFd(int fd)
 {
 	// TODO: error if doesn't exist
-	fdMap.erase(fd);
+	instance.fdMap.erase(fd);
 	// TODO: unregister with poll mechanism
 }
 
 void Poll::setReadableInterest(int fd, bool interest)
 {
-	fdMap.at(fd).readableInterest = interest;
+	instance.fdMap.at(fd).readableInterest = interest;
 }
 
 void Poll::setWritableInterest(int fd, bool interest)
 {
-	fdMap.at(fd).writableInterest = interest;
+	instance.fdMap.at(fd).writableInterest = interest;
 }

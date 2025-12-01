@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <functional>
+#include <span>
 
 class IWritable
 {
@@ -32,5 +33,5 @@ public:
 		information to decide to halt processing so that the buffer does not
 		grow excessively large.
 	*/
-	virtual size_t queueWrite(const char *data, size_t length) = 0;
+	virtual size_t queueWrite(std::span<const char> data) = 0;
 };

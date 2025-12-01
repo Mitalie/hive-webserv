@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <functional>
+#include <span>
 
 class IReadable
 {
@@ -12,7 +13,7 @@ public:
 		already consumed from the source and can not be retrieved later, so the
 		callback must store or process the entire chunk.
 	*/
-	using ReadableDataCallback = std::function<void(const char *data, size_t length)>;
+	using ReadableDataCallback = std::function<void(std::span<const char> data)>;
 
 	/*
 		Start consuming data from the source whenever some is available, and
