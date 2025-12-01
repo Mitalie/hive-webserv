@@ -5,9 +5,10 @@
 
 /*
 	Abstract interface implemented by all request handlers that allows request
-	manager to stream request body to it and report response buffer status.
-	Request handler implementations should accept a IRequestManager reference to
-	allow communicating its status back to the manager.
+	manager to stream the request body to the handler and inform it of the
+	response buffer status. Request handler implementations should accept a
+	IRequestManager reference as a constructor parameter and store it for
+	communicating their status back to the manager.
 */
 class IRequestHandler
 {
