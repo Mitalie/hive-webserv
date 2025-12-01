@@ -14,6 +14,7 @@ def_CPPFLAGS := -MMD -MP $(addprefix -I ,$(INCDIRS))
 SRCS := $(addprefix $(SRCDIR)/,\
 	main.cpp \
 	CallbackQueue.cpp \
+	DummyRequestHandler.cpp \
 	Header.cpp \
 	HeaderReader.cpp \
 	Poll.cpp \
