@@ -17,7 +17,7 @@ public:
 		Release all resources of the request handler. This may be called before
 		the request handling is finished if the client connection is broken.
 	*/
-	virtual ~IRequestHandler() = 0;
+	virtual ~IRequestHandler() = default;
 
 	/*
 		Pass incoming data from connection to the request handler.
