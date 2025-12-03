@@ -15,7 +15,7 @@ void runTest(const std::string &testName, const std::string &scriptPath, const s
 
 	if (access(scriptPath.c_str(), F_OK) == -1)
 	{
-		std::cerr << "[ERROR] Script not found" << std::endl;
+		std::cerr << "[ERROR] Script not found: " << scriptPath << std::endl;
 		return;
 	}
 
@@ -30,6 +30,7 @@ void runTest(const std::string &testName, const std::string &scriptPath, const s
 	try
 	{
 		Header header(rawHeader);
+		// Direct instantiation checks if the physical file exists
 		CgiHandler cgi(header, scriptPath, interpreter);
 
 		bool running = true;
@@ -77,7 +78,8 @@ void runTest(const std::string &testName, const std::string &scriptPath, const s
 
 int main()
 {
-	runTest("PYTHON", "cgi-bin/test.py", "/usr/bin/python3");
-	runTest("PHP", "cgi-bin/phpinfo", "/usr/bin/php-cgi");
+	// Updated paths to match new directory structure
+	runTest("PYTHON", "src/testbin/cgi-bin/test.py", "/usr/bin/python3");
+	runTest("PHP", "src/testbin/cgi-bin/phpinfo", "/usr/bin/php-cgi");
 	return 0;
 }
