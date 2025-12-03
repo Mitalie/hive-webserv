@@ -14,7 +14,6 @@
 #include <utility>
 #include <vector>
 #include <cstring>
-#include <iostream>
 #include <memory>
 #include <string>
 
@@ -32,20 +31,18 @@ CgiHandler::CgiHandler(Header header, std::string scriptPath, std::string interp
 
 CgiHandler::~CgiHandler()
 {
-	// Reset streams to close the parent-side file descriptors immediately
+	// Close wrapper objects first to release FDs
 	stdoutStream.reset();
 	stdinStream.reset();
 	cleanupPipes();
 
-	// Reap the child process to prevent zombie processes
+	// Reap zombie process if necessary
 	if (pid > 0)
 	{
 		int status;
 		pid_t res = waitpid(pid, &status, WNOHANG);
-
 		if (res == 0)
 		{
-			// If child is still running during destruction, kill it
 			kill(pid, SIGKILL);
 			waitpid(pid, nullptr, 0);
 		}
@@ -61,20 +58,13 @@ bool CgiHandler::start(ReadWriteFD::ReadableDataCallback stdoutReadCallback,
 					   ReadWriteFD::WritableDrainCallback stdinDrainCallback,
 					   ReadWriteFD::WritableErrorCallback stdinErrorCallback)
 {
-	// Create two unidirectional pipes:
-	// 1. pipeIn: Parent writes -> Child reads (Stdin)
-	// 2. pipeOut: Child writes -> Parent reads (Stdout)
 	if (pipe(pipeIn) < 0 || pipe(pipeOut) < 0)
-	{
-		std::cerr << "CgiHandler: pipe() failed" << std::endl;
 		return false;
-	}
 
-	// Parent ends must be non-blocking to integrate with the main Poll loop
+	// Parent ends must be non-blocking for the event loop
 	if (fcntl(pipeIn[1], F_SETFL, O_NONBLOCK) < 0 ||
 		fcntl(pipeOut[0], F_SETFL, O_NONBLOCK) < 0)
 	{
-		std::cerr << "CgiHandler: fcntl() failed" << std::endl;
 		cleanupPipes();
 		return false;
 	}
@@ -82,18 +72,16 @@ bool CgiHandler::start(ReadWriteFD::ReadableDataCallback stdoutReadCallback,
 	pid = fork();
 	if (pid < 0)
 	{
-		std::cerr << "CgiHandler: fork() failed" << std::endl;
 		cleanupPipes();
 		return false;
 	}
 
 	if (pid == 0)
 	{
-		setupChild(); // Enter child process logic; does not return
+		setupChild(); // Does not return
 	}
 
-	// Parent Logic:
-	// Close the ends of the pipes used by the child
+	// Parent: Close unused pipe ends
 	close(pipeIn[0]);
 	pipeIn[0] = -1;
 	close(pipeOut[1]);
@@ -107,6 +95,7 @@ bool CgiHandler::start(ReadWriteFD::ReadableDataCallback stdoutReadCallback,
 		stdoutErrorCallback,
 		ReadWriteFD::WritableDrainCallback{},
 		ReadWriteFD::WritableErrorCallback{});
+	pipeOut[0] = -1; // FD ownership transferred
 	stdinStream = std::make_unique<ReadWriteFD>(
 		pipeIn[1],
 		ReadWriteFD::ReadableDataCallback{},
@@ -114,6 +103,7 @@ bool CgiHandler::start(ReadWriteFD::ReadableDataCallback stdoutReadCallback,
 		ReadWriteFD::ReadableErrorCallback{},
 		stdinDrainCallback,
 		stdinErrorCallback);
+	pipeIn[1] = -1; // FD ownership transferred
 
 	return true;
 }
@@ -144,35 +134,65 @@ void CgiHandler::cleanupPipes()
 
 void CgiHandler::setupChild()
 {
-	// 1. Duplicate file descriptors to standard streams
+	// 1. Redirect Standard IO
 	if (dup2(pipeIn[0], STDIN_FILENO) < 0)
 		exit(1);
 	if (dup2(pipeOut[1], STDOUT_FILENO) < 0)
 		exit(1);
 
-	// 2. Close all original pipe FDs as they are now duplicated
+	// 2. Close pipe ends
 	close(pipeIn[1]);
 	close(pipeOut[0]);
 	close(pipeIn[0]);
 	close(pipeOut[1]);
 
-	// 3. Close all other FDs inherited from the parent (sockets, etc.)
-	// This ensures the CGI script doesn't hang onto the server's connections
+	// 3. Safety: Close all other server sockets inherited from parent
 	Poll::closeAllRegisteredFds();
 
-	// 4. Construct Environment Variables (CGI/1.1 Standard)
-	std::vector<std::string> envStrs;
-	envStrs.push_back("REQUEST_METHOD=" + header.method());
-	envStrs.push_back("SERVER_PROTOCOL=HTTP/1.1");
-	envStrs.push_back("PATH_INFO=" + header.path());
-	envStrs.push_back("SCRIPT_FILENAME=" + scriptPath);
-	envStrs.push_back("REDIRECT_STATUS=200"); // Required for some PHP-CGI configurations
+	// 4. Separate Query String from Script Path
+	std::string cleanScriptPath = scriptPath;
+	std::string queryString = "";
+	size_t qPos = scriptPath.find('?');
+	if (qPos != std::string::npos)
+	{
+		cleanScriptPath = scriptPath.substr(0, qPos);
+		queryString = scriptPath.substr(qPos + 1);
+	}
+
+	// 5. Prepare Environment and Args
+	std::vector<std::string> envStrs = createEnvVariables(cleanScriptPath, queryString);
+
+	std::vector<char *> envp;
+	envp.reserve(envStrs.size() + 1);
+	for (const auto &s : envStrs)
+		envp.push_back(const_cast<char *>(s.c_str()));
+	envp.push_back(nullptr);
+
+	char *args[] = {
+		const_cast<char *>(interpreterPath.c_str()),
+		const_cast<char *>(cleanScriptPath.c_str()),
+		nullptr};
+
+	execve(args[0], args, envp.data());
+	exit(1);
+}
+
+std::vector<std::string> CgiHandler::createEnvVariables(const std::string &scriptName, const std::string &queryStr)
+{
+	std::vector<std::string> env;
+	env.reserve(header.all().size() + 10);
+
+	env.push_back("REQUEST_METHOD=" + header.method());
+	env.push_back("SERVER_PROTOCOL=HTTP/1.1");
+	env.push_back("PATH_INFO=" + header.path());
+	env.push_back("SCRIPT_FILENAME=" + scriptName);
+	env.push_back("QUERY_STRING=" + queryStr);
+	env.push_back("REDIRECT_STATUS=200");
 
 	for (const auto &pair : header.all())
 	{
 		std::string key = pair.first;
 		std::string val;
-		// Join multiple values for the same header with commas
 		for (size_t i = 0; i < pair.second.size(); ++i)
 		{
 			if (i > 0)
@@ -180,7 +200,6 @@ void CgiHandler::setupChild()
 			val += pair.second[i];
 		}
 
-		// Convert header format (User-Agent) to Env format (HTTP_USER_AGENT)
 		std::string envKey;
 		for (char c : key)
 		{
@@ -191,24 +210,9 @@ void CgiHandler::setupChild()
 		}
 
 		if (envKey == "CONTENT_LENGTH" || envKey == "CONTENT_TYPE")
-			envStrs.push_back(envKey + "=" + val);
+			env.push_back(envKey + "=" + val);
 		else
-			envStrs.push_back("HTTP_" + envKey + "=" + val);
+			env.push_back("HTTP_" + envKey + "=" + val);
 	}
-
-	// 5. Convert std::string vector to char* array for execve
-	std::vector<char *> envp;
-	envp.reserve(envStrs.size() + 1);
-	for (const auto &s : envStrs)
-		envp.push_back(const_cast<char *>(s.c_str()));
-	envp.push_back(nullptr);
-
-	char *args[] = {
-		const_cast<char *>(interpreterPath.c_str()),
-		const_cast<char *>(scriptPath.c_str()),
-		nullptr};
-
-	// Replace process image with the interpreter
-	execve(args[0], args, envp.data());
-	exit(1); // Only reached if execve fails
+	return env;
 }

@@ -4,14 +4,16 @@
 #include "ReadWriteFD.hpp"
 #include <string>
 #include <memory>
+#include <vector>
 
 /*
-	CgiHandler: The Process Manager
+	CgiHandler: The Low-Level Process Manager.
 
-	Responsibility:
-	- Forks the child process and sets up the environment variables.
-	- Manages the Unix Pipes for Inter-Process Communication (IPC).
-	- Wraps those pipes in ReadWriteFD to expose them as standard IReadable/IWritable streams.
+	Responsibilities:
+	- Establishing anonymous pipes for IPC.
+	- Forking the child process.
+	- Setting up the CGI environment variables.
+	- Executing the target script using execve.
 */
 class CgiHandler
 {
@@ -39,15 +41,17 @@ private:
 	void setupChild();
 	void cleanupPipes();
 
+	// Helper to translate HTTP headers into CGI environment format
+	std::vector<std::string> createEnvVariables(const std::string &scriptName, const std::string &queryStr);
+
 	Header header;
 	std::string scriptPath;
 	std::string interpreterPath;
 
-	// Standard ReadWriteFD wrappers for Poll integration
 	std::unique_ptr<ReadWriteFD> stdoutStream;
 	std::unique_ptr<ReadWriteFD> stdinStream;
 
 	pid_t pid;
-	int pipeIn[2];	// Parent writes -> Child reads (stdin)
-	int pipeOut[2]; // Child writes -> Parent reads (stdout)
+	int pipeIn[2];	// Server -> Script
+	int pipeOut[2]; // Script -> Server
 };

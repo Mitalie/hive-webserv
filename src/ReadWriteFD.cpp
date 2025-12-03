@@ -36,6 +36,9 @@ ReadWriteFD::ReadWriteFD(
 ReadWriteFD::~ReadWriteFD()
 {
 	Poll::removeFd(fd);
+	// RAII: Ensure the file descriptor is closed when the wrapper is destroyed.
+	if (fd >= 0)
+		close(fd);
 }
 
 void ReadWriteFD::startReading()

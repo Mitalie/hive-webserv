@@ -1,11 +1,7 @@
-#include <cstddef>
 #include <exception>
 #include <iostream>
 #include <span>
 #include <string>
-#include <thread>
-#include <chrono>
-#include <algorithm>
 #include <sstream>
 
 #include "CgiRequestHandler.hpp"
@@ -15,106 +11,87 @@
 #include "Header.hpp"
 #include "Tokenizer.hpp"
 
-// ==========================================
-// 1. THE MOCK MANAGER
-// ==========================================
+// Mock Manager
 class MockRequestManager : public IRequestManager
 {
 public:
 	bool isDone = false;
-	bool isReadingBody = true;
+	bool gotError = false;
 
 	void writeResponseData(std::span<const char> data) override
 	{
-		std::cout << "[MOCK MANAGER] Received " << data.size() << " bytes of response: ";
-		std::string view(data.data(), std::min((size_t)50, data.size()));
-		std::cout << "\"" << view << (data.size() > 50 ? "..." : "") << "\"" << std::endl;
+		std::cout << "   [MOCK] Received " << data.size() << " bytes." << std::endl;
 	}
-
 	void onRequestDone() override
 	{
-		std::cout << "[MOCK MANAGER] Request marked as DONE." << std::endl;
+		std::cout << "   [MOCK] Request marked as DONE." << std::endl;
 		isDone = true;
 	}
-
 	void onRequestError() override
 	{
-		std::cerr << "[MOCK MANAGER] Request marked as ERROR." << std::endl;
+		std::cout << "   [MOCK] Request marked as ERROR (Timeout/Crash)." << std::endl;
 		isDone = true;
+		gotError = true;
 	}
-
-	void setReadingBody(bool reading) override
-	{
-		if (isReadingBody != reading)
-		{
-			std::cout << "[MOCK MANAGER] Backpressure update: Stop reading from client? "
-					  << (!reading ? "YES (Pipe Full)" : "NO (Pipe Drained)") << std::endl;
-			isReadingBody = reading;
-		}
-	}
+	void setReadingBody(bool) override {}
 };
 
-// ==========================================
-// 2. THE TEST RUNNER
-// ==========================================
-int main()
+void runIntegrationTest(const std::string &testName, const std::string &scriptFile, bool expectSuccess)
 {
-	std::cout << "==========================================" << std::endl;
-	std::cout << "TEST: CgiRequestHandler Integration" << std::endl;
-	std::cout << "==========================================" << std::endl;
+	std::cout << "\n==========================================" << std::endl;
+	std::cout << "TEST: " << testName << std::endl;
+	std::cout << "Script: " << scriptFile << std::endl;
+	std::cout << "Expect: " << (expectSuccess ? "SUCCESS (Done)" : "FAILURE (Error/Timeout)") << std::endl;
+	std::cout << "------------------------------------------" << std::endl;
 
 	MockRequestManager mockManager;
-
-	// RouteConfig expects: <PATH> <OPEN_BRACE> <DIRECTIVES...> <CLOSE_BRACE>
 	std::stringstream dummyStream("/dummy_path { }");
 	Tokenizer tok(dummyStream);
 	RouteConfig route(tok);
-
-	// Manual Setup (Overwrite the empty defaults)
-	// UPDATE: Point root to the testbin folder so it finds cgi-bin inside it
 	route.root = "src/testbin";
-
 	route.cgiInterpreters[".py"] = "/usr/bin/python3";
-	route.cgiInterpreters[".php"] = "/usr/bin/php-cgi";
-	// --------------------------------------------
 
 	std::string rawHeader =
-		"POST /cgi-bin/test.py HTTP/1.1\r\n"
+		"POST /cgi-bin/" +
+		scriptFile +
+		" HTTP/1.1\r\n"
 		"Host: localhost\r\n"
-		"Content-Length: 10\r\n"
+		"Content-Length: 5\r\n"
 		"Content-Type: text/plain";
 	Header header(rawHeader);
 
 	try
 	{
-		// Instantiate the Handler
 		CgiRequestHandler handler(mockManager, header, route);
-		std::cout << "[TEST] Handler Created. CGI process should be running.\n"
-				  << std::endl;
+		std::string body = "hello";
+		handler.onBodyData(std::span<const char>(body.data(), body.size()));
 
-		// Simulate Data Flow
-		std::string bodyChunk = "helloworld";
-		std::cout << "[TEST] Sending body data: " << bodyChunk << std::endl;
-
-		handler.onBodyData(std::span<const char>(bodyChunk.data(), bodyChunk.size()));
-
-		// Run the Poll Loop
-		int maxCycles = 100;
+		int maxCycles = 350; // 35s max wait
 		while (!mockManager.isDone && maxCycles-- > 0)
 		{
-			Poll::doPoll();
-			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			// Poll for max 100ms, then return to let us check timeouts
+			Poll::doPoll(100);
+			handler.checkTimeout();
 		}
 
 		if (maxCycles <= 0)
-			std::cerr << "[TEST] Timed out waiting for CGI to finish!" << std::endl;
+			std::cerr << "   [RESULT] FAILED: Test hung!" << std::endl;
+		else if (expectSuccess && mockManager.gotError)
+			std::cerr << "   [RESULT] FAILED: Expected Success, got Error." << std::endl;
+		else if (!expectSuccess && !mockManager.gotError)
+			std::cerr << "   [RESULT] FAILED: Expected Error, got Success." << std::endl;
+		else
+			std::cout << "   [RESULT] PASSED." << std::endl;
 	}
 	catch (const std::exception &e)
 	{
-		std::cerr << "[EXCEPTION] " << e.what() << std::endl;
+		std::cerr << "   [EXCEPTION] " << e.what() << std::endl;
 	}
+}
 
-	std::cout << "\n==========================================" << std::endl;
-	std::cout << "TEST FINISHED" << std::endl;
+int main()
+{
+	runIntegrationTest("Normal Execution", "test.py", true);
+	runIntegrationTest("Timeout Safety (Waits 30s)", "timeout.py", false);
 	return 0;
 }

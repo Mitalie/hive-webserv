@@ -7,37 +7,27 @@
 #include <string>
 #include <memory>
 #include <span>
+#include <iostream>
+#include <chrono>
 
 CgiRequestHandler::CgiRequestHandler(IRequestManager &manager, const Header &header, const RouteConfig &route)
 	: manager_(manager),
-	  responseFinished_(false)
+	  responseFinished_(false),
+	  startTime_(std::chrono::steady_clock::now())
 {
-	// 1. Determine interpreter
+	// Config Logic (Helper)
 	std::string scriptPath = route.root + header.path();
-	std::string extension = "";
-	size_t dotPos = scriptPath.find_last_of('.');
-	if (dotPos != std::string::npos)
-	{
-		extension = scriptPath.substr(dotPos);
-	}
+	std::string interpreter = findInterpreter(scriptPath, route);
 
-	std::string interpreter;
-	auto it = route.cgiInterpreters.find(extension);
-	if (it != route.cgiInterpreters.end())
+	if (interpreter.empty())
 	{
-		interpreter = it->second;
-	}
-	else
-	{
-		// Strict Check: Do not guess. If extension is unknown, fail.
 		manager_.onRequestError();
 		return;
 	}
 
-	// 2. Init process manager
+	// Process Initiation
 	cgiHandler_ = std::make_unique<CgiHandler>(header, scriptPath, interpreter);
 
-	// 3. Start process
 	if (!cgiHandler_->start(
 			[this](std::span<const char> data)
 			{
@@ -65,24 +55,53 @@ CgiRequestHandler::CgiRequestHandler(IRequestManager &manager, const Header &hea
 		return;
 	}
 
-	// 4. Wire Output (CGI Stdout -> Server Response)
 	cgiHandler_->getStdoutStream()->startReading();
 }
 
 CgiRequestHandler::~CgiRequestHandler() {}
 
+std::string CgiRequestHandler::findInterpreter(const std::string &scriptPath, const RouteConfig &route)
+{
+	std::string extension = "";
+	size_t dotPos = scriptPath.find_last_of('.');
+	if (dotPos != std::string::npos)
+	{
+		extension = scriptPath.substr(dotPos);
+	}
+
+	size_t qPos = extension.find('?');
+	if (qPos != std::string::npos)
+		extension = extension.substr(0, qPos);
+
+	auto it = route.cgiInterpreters.find(extension);
+	if (it != route.cgiInterpreters.end())
+	{
+		return it->second;
+	}
+
+	return "";
+}
+
+void CgiRequestHandler::checkTimeout()
+{
+	if (responseFinished_)
+		return;
+
+	auto now = std::chrono::steady_clock::now();
+	if (now - startTime_ > CGI_TIMEOUT_LIMIT)
+	{
+		std::cerr << "[CGI] Timeout reached (" << CGI_TIMEOUT_LIMIT.count() << "s). Terminating." << std::endl;
+		manager_.onRequestError();
+	}
+}
+
 void CgiRequestHandler::onBodyData(std::span<const char> data)
 {
 	if (!cgiHandler_)
 		return;
-
 	size_t queued = cgiHandler_->getStdinStream()->queueWrite(data);
-
-	// Backpressure: If pipe is full, stop reading from client socket
 	if (queued > PIPE_WRITE_HIGH_WATER_MARK)
-	{
 		manager_.setReadingBody(false);
-	}
 }
 
 void CgiRequestHandler::notifyResponseBuffer(size_t bufferSize)

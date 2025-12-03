@@ -8,7 +8,8 @@
 class Poll;
 
 /*
-	Implementation of IReadable and IWritable on standard Unix file descriptors.
+	Implementation of IReadable and IWritable for standard Unix file descriptors.
+	Provides non-blocking I/O with internal buffering for writes.
 */
 class ReadWriteFD
 {

@@ -23,7 +23,7 @@ Poll::~Poll()
 	// epoll: release instance
 }
 
-void Poll::doPoll()
+void Poll::doPoll(int timeout)
 {
 	size_t numFds = instance.fdMap.size();
 	std::unique_ptr<pollfd[]> fds(new pollfd[numFds]);
@@ -41,9 +41,13 @@ void Poll::doPoll()
 			current.events |= POLLOUT;
 	}
 
-	int res = poll(fds.get(), numFds, -1);
+	int res = poll(fds.get(), numFds, timeout);
 	if (res < 0)
 		throw std::runtime_error("poll");
+
+	// Return immediately on timeout to allow the main loop to perform other tasks
+	if (res == 0)
+		return;
 
 	fdsIdx = 0;
 	while (fdsIdx < numFds)
