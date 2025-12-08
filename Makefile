@@ -15,6 +15,7 @@ SRCS := $(addprefix $(SRCDIR)/,\
 	main.cpp \
 	CallbackQueue.cpp \
 	ChunkHeaderReader.cpp \
+	ClientHandler.cpp \
 	DummyRequestHandler.cpp \
 	Header.cpp \
 	HeaderReader.cpp \
@@ -36,6 +37,7 @@ TESTS := $(addprefix $(TESTDIR)/,\
 	callbackIO \
 	headerParser \
 	config_test \
+	clientHandler \
 )
 TEST_SRCS := $(TESTS:%=$(SRCDIR)/%.cpp)
 # - Exclude main.o from OBJS as each test comes with its own main
