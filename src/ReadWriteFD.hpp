@@ -32,10 +32,11 @@ public:
 	virtual void stopWriting() override;
 	virtual size_t queueWrite(std::span<const char> data) override;
 
+	static const size_t maxReadSize = 4096;
+
 private:
 	int fd;
 
-	static const size_t maxReadSize = 4096;
 	ReadableDataCallback readCallback;
 	void onReadable();
 

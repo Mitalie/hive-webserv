@@ -14,7 +14,12 @@ def_CPPFLAGS := -MMD -MP $(addprefix -I ,$(INCDIRS))
 SRCS := $(addprefix $(SRCDIR)/,\
 	main.cpp \
 	CallbackQueue.cpp \
+	ChunkHeaderReader.cpp \
+	ClientHandler.cpp \
+	DummyRequestHandler.cpp \
 	Header.cpp \
+	HeaderReader.cpp \
+	Listener.cpp \
 	Poll.cpp \
 	ReadWriteFD.cpp \
 	Config.cpp \
@@ -33,6 +38,8 @@ TESTS := $(addprefix $(TESTDIR)/,\
 	callbackIO \
 	headerParser \
 	config_test \
+	clientHandler \
+	listener \
 )
 TEST_SRCS := $(TESTS:%=$(SRCDIR)/%.cpp)
 # - Exclude main.o from OBJS as each test comes with its own main

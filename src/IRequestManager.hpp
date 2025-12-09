@@ -2,7 +2,6 @@
 
 #include <span>
 
-
 /*
 	Abstract interface implemented by the request manager that allows a request
 	handler to communicate its status to the manager. The manager is expected to
@@ -20,24 +19,16 @@ public:
 	virtual void setReadingBody(bool reading) = 0;
 
 	/*
-		Request that the request manager starts streaming response data to the
-		client. Initially data is queued but not sent to allow for sending an
-		error response instead if the handler exits with an error. Once writing
-		has been started, errors require terminating the connection.
+		Write response data to the output connection. The request manager calls
+		IRequestHandler::notifyResponseBuffer to report the write buffer length
+		whenever it changes, either when writing more data to the buffer or when
+		flushing buffered data to the socket.
 	*/
-	virtual void startWritingResponse() = 0;
+	virtual void writeResponseData(std::span<const char> data) = 0;
 
 	/*
-		Queue response data to the output connection. The request manager
-		reports the queue buffer size via IRequestHandler::notifyResponseBuffer
-		whenever it changes.
-	*/
-	virtual void queueResponseData(std::span<const char> data) = 0;
-
-	/*
-		Report that the request handler has finished processing and has queued
-		a valid response. The manager will start writing the response if it was
-		not already started. The handler will be destroyed.
+		Report that the request handler has finished processing and has written
+		a valid response. The handler will be destroyed.
 	*/
 	virtual void onRequestDone() = 0;
 
