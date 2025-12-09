@@ -9,11 +9,11 @@
 #include "Config.hpp"
 #include "HeaderReader.hpp"
 #include "IRequestManager.hpp"
+#include "IRequestHandler.hpp"
 #include "ReadWriteFD.hpp"
 #include "UnixFD.hpp"
 
 class Poll;
-class DummyRequestHandler;
 
 /*
 	ClientHandler class is instantiated for each client connection.
@@ -59,7 +59,7 @@ private:
 
 	ChunkHeaderReader chunkHeaderReader;
 	HeaderReader headerReader;
-	std::unique_ptr<DummyRequestHandler> request;
+	std::unique_ptr<IRequestHandler> request;
 	// Keep track of completed request even if request ptr wasn't set yet
 	bool requestDone = false;
 	bool readingPaused = false;

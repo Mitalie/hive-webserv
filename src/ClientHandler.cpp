@@ -11,8 +11,8 @@
 #include "CallbackQueue.hpp"
 #include "Config.hpp"
 #include "Header.hpp"
-#include "DummyRequestHandler.hpp"
 #include "UnixFD.hpp"
+#include "router.hpp"
 
 ClientHandler::ClientHandler(const ListenerConfig &config, UnixFD &&fd)
 	: config(config),
@@ -76,8 +76,8 @@ void ClientHandler::createRequestHandler(Header &&header)
 			chunked = true;
 	}
 	requestDone = false;
-	// TODO: routing should pick and create the handler
-	request = std::make_unique<DummyRequestHandler>(*this, std::move(header));
+	// Use router to select and create the appropriate handler
+	request = router(*this, header, config);
 	if (requestDone) // request completed during its construction
 		request = nullptr;
 }
