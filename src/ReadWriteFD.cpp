@@ -3,14 +3,20 @@
 #include <cstddef>
 #include <span>
 #include <stdexcept>
+#include <utility>
 
 #include <sys/types.h>
 #include <unistd.h>
 
 #include "Poll.hpp"
 
-ReadWriteFD::ReadWriteFD(int fd)
-	: fd(fd)
+ReadWriteFD::ReadWriteFD(
+	int fd,
+	ReadableDataCallback readCallback,
+	WritableDrainCallback writeCallback)
+	: fd(fd),
+	  readCallback(std::move(readCallback)),
+	  writeCallback(std::move(writeCallback))
 {
 	Poll::addFd(
 		fd,
@@ -25,15 +31,13 @@ ReadWriteFD::~ReadWriteFD()
 	Poll::removeFd(fd);
 }
 
-void ReadWriteFD::startReading(ReadableDataCallback callback)
+void ReadWriteFD::startReading()
 {
-	readCallback = callback;
 	Poll::setReadableInterest(fd, true);
 }
 
 void ReadWriteFD::stopReading()
 {
-	readCallback = {};
 	Poll::setReadableInterest(fd, false);
 }
 
@@ -45,19 +49,6 @@ void ReadWriteFD::onReadable()
 		// TODO: proper error handling
 		throw std::runtime_error("read");
 	readCallback(std::span(readBuffer, bytesRead));
-}
-
-void ReadWriteFD::startWriting(WritableDrainCallback callback)
-{
-	writeCallback = callback;
-	if (!writeBuffer.empty())
-		Poll::setWritableInterest(fd, true);
-}
-
-void ReadWriteFD::stopWriting()
-{
-	writeCallback = {};
-	Poll::setWritableInterest(fd, false);
 }
 
 size_t ReadWriteFD::queueWrite(std::span<const char> data)
