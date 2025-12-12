@@ -13,15 +13,14 @@
 #include "DummyRequestHandler.hpp"
 
 ClientHandler::ClientHandler(int fd)
-	: socket(fd)
+	: socket(
+		  fd,
+		  [this](std::span<const char> newData)
+		  { socketReadCallback(newData); },
+		  [this](size_t bufferSize)
+		  { socketWriteCallback(bufferSize); })
 {
 	leftoverData.reserve(socket.maxReadSize);
-	socket.startWriting(
-		[this](size_t bufferSize)
-		{
-			if (request)
-				request->notifyResponseBuffer(bufferSize);
-		});
 	updateWakeup();
 }
 
@@ -137,7 +136,7 @@ void ClientHandler::processData()
 	updateWakeup();
 }
 
-void ClientHandler::readableDataCallback(std::span<const char> newData)
+void ClientHandler::socketReadCallback(std::span<const char> newData)
 {
 	// Use read buffer directly to avoid unnecessary copying
 	availableData = newData;
@@ -157,6 +156,12 @@ void ClientHandler::bufferedDataCallback()
 	if (availableData.empty())
 		// Buffer fully consumed
 		leftoverData.clear();
+}
+
+void ClientHandler::socketWriteCallback(size_t bufferSize)
+{
+	if (request)
+		request->notifyResponseBuffer(bufferSize);
 }
 
 /*
@@ -193,11 +198,7 @@ void ClientHandler::updateWakeup()
 		socket.stopReading();
 	else if (availableData.empty())
 		// Data fully consumed, wake up for read
-		socket.startReading(
-			[this](std::span<const char> newData)
-			{
-				readableDataCallback(newData);
-			});
+		socket.startReading();
 	else if (!bufferedDataCallbackPending)
 	{
 		// Queue callback to handle buffered data

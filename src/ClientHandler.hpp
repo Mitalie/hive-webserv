@@ -46,8 +46,9 @@ private:
 	bool bufferedDataCallbackPending = false;
 	bool processingData = false;
 	void processData();
-	void readableDataCallback(std::span<const char> newData);
+	void socketReadCallback(std::span<const char> newData);
 	void bufferedDataCallback();
+	void socketWriteCallback(size_t bufferSize);
 	void updateWakeup();
 
 	/* Incoming data processing */

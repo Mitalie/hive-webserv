@@ -36,8 +36,8 @@ int main()
 
 	// For input, just process whatever we receive
 	bool doneR = false;
-	ReadWriteFD in(0);
-	in.startReading(
+	ReadWriteFD in(
+		0,
 		[&doneR, &in](std::span<const char> data)
 		{
 			std::cout << "\x1b[33mRead block of " << data.size() << " bytes: >\x1b[31m" << std::string_view(data.begin(), data.end()) << "\x1b[33m<\x1b[0m" << std::endl;
@@ -46,18 +46,20 @@ int main()
 				doneR = true;
 				in.stopReading();
 			}
-		});
+		},
+		{});
+	in.startReading();
 
 	// For output, we could just queue the entire message, but let's instead keep the buffer size limited
-	ReadWriteFD out(1);
 	std::string outputData = "some example data, and more example data.\n";
 	const size_t outputChunkSize = 4;
 	const size_t outputBufSize = outputChunkSize * 2;
-	out.queueWrite(std::span(outputData.data(), outputBufSize));
 	std::cout << "\x1b[33mWrite buffer has " << outputBufSize << " bytes queued\x1b[0m" << std::endl;
 	size_t outputPos = outputBufSize;
 	bool doneW = false;
-	out.startWriting(
+	ReadWriteFD out(
+		1,
+		{},
 		[&doneW, &out, &outputData, &outputPos](size_t bufferSize)
 		{
 			std::cout << "\x1b[33mWrite buffer has " << bufferSize << " bytes remaining after write\x1b[0m" << std::endl;
@@ -74,6 +76,7 @@ int main()
 				doneW = true;
 			std::cout << "\x1b[33mWrite buffer has " << bufferSize << " bytes queued\x1b[0m" << std::endl;
 		});
+	out.queueWrite(std::span(outputData.data(), outputBufSize));
 
 	// Pump the FDs with poll until both operations are done
 	while (!doneR || !doneW)
