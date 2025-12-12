@@ -136,12 +136,12 @@ int main()
 	}
 
 	std::vector<TestCase> tests = {
-		{"PYTHON", "src/testbin/cgi-bin/test.py", "/usr/bin/python3", ""},
-		{"PHP", "src/testbin/cgi-bin/phpinfo", "/usr/bin/php-cgi", ""},
-		{"BASH", "src/testbin/cgi-bin/test.sh", "/usr/bin/bash", ""},
-		{"PERL", "src/testbin/cgi-bin/test.pl", "/usr/bin/perl", ""},
-		{"RUBY", "src/testbin/cgi-bin/test.rb", rubyPath, ""},
-		{"SESSION", "src/testbin/cgi-bin/session_test.py?foo=bar", "/usr/bin/python3", "Cookie: visit_count=5"}};
+		{"PYTHON", "testdata/cgi-bin/test.py", "/usr/bin/python3", ""},
+		{"PHP", "testdata/cgi-bin/phpinfo", "/usr/bin/php-cgi", ""},
+		{"BASH", "testdata/cgi-bin/test.sh", "/usr/bin/bash", ""},
+		{"PERL", "testdata/cgi-bin/test.pl", "/usr/bin/perl", ""},
+		{"RUBY", "testdata/cgi-bin/test.rb", rubyPath, ""},
+		{"SESSION", "testdata/cgi-bin/session_test.py?foo=bar", "/usr/bin/python3", "Cookie: visit_count=5"}};
 
 	while (true)
 	{

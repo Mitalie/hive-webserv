@@ -48,7 +48,7 @@ void runIntegrationTest(const std::string &testName, const std::string &scriptFi
 	std::stringstream dummyStream("/dummy_path { }");
 	Tokenizer tok(dummyStream);
 	RouteConfig route(tok);
-	route.root = "src/testbin";
+	route.root = "testdata";
 	route.cgiInterpreters[".py"] = "/usr/bin/python3";
 
 	std::string rawHeader =
