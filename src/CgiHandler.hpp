@@ -1,10 +1,12 @@
 #pragma once
 
+#include <memory>
+#include <span>
+#include <string>
+#include <vector>
+
 #include "Header.hpp"
 #include "ReadWriteFD.hpp"
-#include <string>
-#include <memory>
-#include <vector>
 
 /*
 	CgiHandler: The Low-Level Process Manager.
@@ -14,6 +16,7 @@
 	- Forking the child process.
 	- Setting up the CGI environment variables.
 	- Executing the target script using execve.
+	- Encapsulating I/O streams to the child process.
 */
 class CgiHandler
 {
@@ -26,6 +29,7 @@ public:
 		1. Creates anonymous pipes.
 		2. Forks the process.
 		3. Wraps the parent-side FDs in ReadWriteFD for non-blocking I/O.
+		4. Automatically starts reading from the script's output (stdout).
 		Returns false if system calls (pipe/fork) fail.
 	*/
 	bool start(ReadWriteFD::ReadableDataCallback stdoutReadCallback,
@@ -34,8 +38,18 @@ public:
 			   ReadWriteFD::WritableDrainCallback stdinDrainCallback,
 			   ReadWriteFD::WritableErrorCallback stdinErrorCallback);
 
-	ReadWriteFD *getStdoutStream(); // readable stream from CGI stdout
-	ReadWriteFD *getStdinStream();	// writable stream to CGI stdin
+	/*
+		Flow control for the script's output (Server <- Script).
+		Forwarded to the internal stdout stream.
+	*/
+	void startReading();
+	void stopReading();
+
+	/*
+		Queue data to be written to the script's input (Server -> Script).
+		Forwarded to the internal stdin stream.
+	*/
+	size_t queueWrite(std::span<const char> data);
 
 private:
 	void setupChild();

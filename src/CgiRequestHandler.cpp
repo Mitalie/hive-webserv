@@ -1,14 +1,15 @@
-#include "CgiRequestHandler.hpp"
-#include "IRequestManager.hpp"
-#include "Header.hpp"
-#include "Config.hpp"
+#include <chrono>
 #include <cstddef>
-#include "CgiHandler.hpp"
-#include <string>
+#include <iostream>
 #include <memory>
 #include <span>
-#include <iostream>
-#include <chrono>
+#include <string>
+
+#include "CgiHandler.hpp"
+#include "CgiRequestHandler.hpp"
+#include "Config.hpp"
+#include "Header.hpp"
+#include "IRequestManager.hpp"
 
 CgiRequestHandler::CgiRequestHandler(IRequestManager &manager, const Header &header, const RouteConfig &route)
 	: manager_(manager),
@@ -54,8 +55,6 @@ CgiRequestHandler::CgiRequestHandler(IRequestManager &manager, const Header &hea
 		manager_.onRequestError();
 		return;
 	}
-
-	cgiHandler_->getStdoutStream()->startReading();
 }
 
 CgiRequestHandler::~CgiRequestHandler() {}
@@ -99,7 +98,7 @@ void CgiRequestHandler::onBodyData(std::span<const char> data)
 {
 	if (!cgiHandler_)
 		return;
-	size_t queued = cgiHandler_->getStdinStream()->queueWrite(data);
+	size_t queued = cgiHandler_->queueWrite(data);
 	if (queued > PIPE_WRITE_HIGH_WATER_MARK)
 		manager_.setReadingBody(false);
 }
@@ -112,10 +111,10 @@ void CgiRequestHandler::notifyResponseBuffer(size_t bufferSize)
 	// Backpressure: If client socket is full, stop reading from CGI
 	if (bufferSize > CLIENT_SEND_HIGH_WATER_MARK)
 	{
-		cgiHandler_->getStdoutStream()->stopReading();
+		cgiHandler_->stopReading();
 	}
 	else
 	{
-		cgiHandler_->getStdoutStream()->startReading();
+		cgiHandler_->startReading();
 	}
 }

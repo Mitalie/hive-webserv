@@ -97,8 +97,7 @@ void runTest(const std::string &testName, const std::string &scriptPath,
 					running = false;
 				}))
 		{
-			cgi.getStdoutStream()->startReading();
-			cgi.getStdinStream()->queueWrite(std::span<const char>(body.data(), body.size()));
+			cgi.queueWrite(std::span<const char>(body.data(), body.size()));
 
 			int cycles = 0;
 			while (running && cycles++ < 200)
@@ -110,70 +109,70 @@ void runTest(const std::string &testName, const std::string &scriptPath,
 		}
 	}
 	catch (const std::exception &e)
-	{
-		std::cerr << "[EXCEPTION] " << e.what() << std::endl;
-	}
+    {
+        std::cerr << "[EXCEPTION] " << e.what() << std::endl;
+    }
 }
 
 int main()
 {
-	struct TestCase
-	{
-		std::string name;
-		std::string script;
-		std::string interp;
-		std::string headers;
-	};
+    struct TestCase
+    {
+        std::string name;
+        std::string script;
+        std::string interp;
+        std::string headers;
+    };
 
-	// Check local env for specific ruby, default to system ruby.
-	const char *homeDir = std::getenv("HOME");
-	std::string rubyPath = "/usr/bin/ruby";
-	if (homeDir)
-	{
-		std::string localRuby = std::string(homeDir) + "/local_ruby/bin/ruby";
-		if (access(localRuby.c_str(), X_OK) == 0)
-			rubyPath = localRuby;
-	}
+    // Check local env for specific ruby, default to system ruby.
+    const char *homeDir = std::getenv("HOME");
+    std::string rubyPath = "/usr/bin/ruby";
+    if (homeDir)
+    {
+        std::string localRuby = std::string(homeDir) + "/local_ruby/bin/ruby";
+        if (access(localRuby.c_str(), X_OK) == 0)
+            rubyPath = localRuby;
+    }
 
-	std::vector<TestCase> tests = {
-		{"PYTHON", "testdata/cgi-bin/test.py", "/usr/bin/python3", ""},
-		{"PHP", "testdata/cgi-bin/phpinfo", "/usr/bin/php-cgi", ""},
-		{"BASH", "testdata/cgi-bin/test.sh", "/usr/bin/bash", ""},
-		{"PERL", "testdata/cgi-bin/test.pl", "/usr/bin/perl", ""},
-		{"RUBY", "testdata/cgi-bin/test.rb", rubyPath, ""},
-		{"SESSION", "testdata/cgi-bin/session_test.py?foo=bar", "/usr/bin/python3", "Cookie: visit_count=5"}};
+    std::vector<TestCase> tests = {
+        {"PYTHON", "testdata/cgi-bin/test.py", "/usr/bin/python3", ""},
+        {"PHP", "testdata/cgi-bin/phpinfo", "/usr/bin/php-cgi", ""},
+        {"BASH", "testdata/cgi-bin/test.sh", "/usr/bin/bash", ""},
+        {"PERL", "testdata/cgi-bin/test.pl", "/usr/bin/perl", ""},
+        {"RUBY", "testdata/cgi-bin/test.rb", rubyPath, ""},
+        {"SESSION", "testdata/cgi-bin/session_test.py?foo=bar", "/usr/bin/python3", "Cookie: visit_count=5"}};
 
-	while (true)
-	{
-		std::cout << "\nSelect CGI Test Case:\n";
-		for (size_t i = 0; i < tests.size(); ++i)
-		{
-			std::cout << i + 1 << ". " << tests[i].name << "\n";
-		}
-		std::cout << tests.size() + 1 << ". RUN ALL (to output.txt)\n";
-		std::cout << "0. Exit\n> ";
+    while (true)
+    {
+        std::cout << "\nSelect CGI Test Case:\n";
+        for (size_t i = 0; i < tests.size(); ++i)
+        {
+            std::cout << i + 1 << ". " << tests[i].name << "\n";
+        }
+        std::cout << tests.size() + 1 << ". RUN ALL (to output.txt)\n";
+        std::cout << "0. Exit\n> ";
 
-		int choice;
-		if (!(std::cin >> choice))
-			break;
-		if (choice == 0)
-			break;
+        int choice;
+        if (!(std::cin >> choice))
+            break;
+        if (choice == 0)
+            break;
 
-		if (choice > 0 && choice <= (int)tests.size())
-		{
-			const auto &t = tests[choice - 1];
-			runTest(t.name, t.script, t.interp, std::cout, t.headers);
-		}
-		else if (choice == (int)tests.size() + 1)
-		{
-			std::ofstream outfile("output.txt");
-			if (outfile.is_open())
-			{
-				for (const auto &t : tests)
-					runTest(t.name, t.script, t.interp, outfile, t.headers);
-				std::cout << "Done! See output.txt.\n";
-			}
-		}
-	}
-	return 0;
+        if (choice > 0 && choice <= (int)tests.size())
+        {
+            const auto &t = tests[choice - 1];
+            runTest(t.name, t.script, t.interp, std::cout, t.headers);
+        }
+        else if (choice == (int)tests.size() + 1)
+        {
+            std::ofstream outfile("output.txt");
+            if (outfile.is_open())
+            {
+                for (const auto &t : tests)
+                    runTest(t.name, t.script, t.interp, outfile, t.headers);
+                std::cout << "Done! See output.txt.\n";
+            }
+        }
+    }
+    return 0;
 }

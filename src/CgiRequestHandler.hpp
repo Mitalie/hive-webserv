@@ -1,14 +1,15 @@
 #pragma once
 
-#include "IRequestHandler.hpp"
-#include "IRequestManager.hpp"
-#include "Header.hpp"
-#include "Config.hpp"
-#include "CgiHandler.hpp"
+#include <chrono>
+#include <functional>
 #include <memory>
 #include <string>
-#include <functional>
-#include <chrono>
+
+#include "CgiHandler.hpp"
+#include "Config.hpp"
+#include "Header.hpp"
+#include "IRequestHandler.hpp"
+#include "IRequestManager.hpp"
 
 /*
 	Bridge between the Server logic and the CGI process.

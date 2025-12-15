@@ -1,21 +1,22 @@
+#include <cctype>
+#include <cstdlib>
+#include <cstring>
+#include <memory>
+#include <span>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include <fcntl.h>
+#include <signal.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
 #include "CgiHandler.hpp"
 #include "Header.hpp"
 #include "Poll.hpp"
 #include "ReadWriteFD.hpp"
-
-#include <sys/types.h>
-#include <stdlib.h>
-#include <signal.h>
-#include <cstdlib>
-#include <cctype>
-#include <unistd.h>
-#include <sys/wait.h>
-#include <fcntl.h>
-#include <utility>
-#include <vector>
-#include <cstring>
-#include <memory>
-#include <string>
 
 CgiHandler::CgiHandler(Header header, std::string scriptPath, std::string interpreterPath)
 	: header(std::move(header)),
@@ -49,8 +50,25 @@ CgiHandler::~CgiHandler()
 	}
 }
 
-ReadWriteFD *CgiHandler::getStdoutStream() { return stdoutStream.get(); }
-ReadWriteFD *CgiHandler::getStdinStream() { return stdinStream.get(); }
+// Forwarding methods
+void CgiHandler::startReading()
+{
+	if (stdoutStream)
+		stdoutStream->startReading();
+}
+
+void CgiHandler::stopReading()
+{
+	if (stdoutStream)
+		stdoutStream->stopReading();
+}
+
+size_t CgiHandler::queueWrite(std::span<const char> data)
+{
+	if (stdinStream)
+		return stdinStream->queueWrite(data);
+	return 0;
+}
 
 bool CgiHandler::start(ReadWriteFD::ReadableDataCallback stdoutReadCallback,
 					   ReadWriteFD::ReadableEofCallback stdoutEofCallback,
@@ -96,6 +114,7 @@ bool CgiHandler::start(ReadWriteFD::ReadableDataCallback stdoutReadCallback,
 		ReadWriteFD::WritableDrainCallback{},
 		ReadWriteFD::WritableErrorCallback{});
 	pipeOut[0] = -1; // FD ownership transferred
+	
 	stdinStream = std::make_unique<ReadWriteFD>(
 		pipeIn[1],
 		ReadWriteFD::ReadableDataCallback{},
@@ -104,6 +123,9 @@ bool CgiHandler::start(ReadWriteFD::ReadableDataCallback stdoutReadCallback,
 		stdinDrainCallback,
 		stdinErrorCallback);
 	pipeIn[1] = -1; // FD ownership transferred
+
+	// Automatically start reading from the script
+	stdoutStream->startReading();
 
 	return true;
 }
