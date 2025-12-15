@@ -31,7 +31,10 @@ private:
 	std::string findInterpreter(const std::string &scriptPath, const RouteConfig &route);
 
 	void startCgiOutputRead();
-
+	
+	// We use unique_ptr for delayed initialization.
+	// The handler must only be created AFTER we have validated the interpreter path
+	// in the constructor, which prevents needing complex logic in the initializer list.
 	IRequestManager &manager_;
 	std::unique_ptr<CgiHandler> cgiHandler_;
 	bool responseFinished_;

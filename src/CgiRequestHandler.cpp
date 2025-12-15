@@ -1,5 +1,6 @@
 #include <chrono>
 #include <cstddef>
+#include <exception>
 #include <iostream>
 #include <memory>
 #include <span>
@@ -10,6 +11,7 @@
 #include "Config.hpp"
 #include "Header.hpp"
 #include "IRequestManager.hpp"
+#include "ReadWriteFD.hpp"
 
 CgiRequestHandler::CgiRequestHandler(IRequestManager &manager, const Header &header, const RouteConfig &route)
 	: manager_(manager),
@@ -27,9 +29,13 @@ CgiRequestHandler::CgiRequestHandler(IRequestManager &manager, const Header &hea
 	}
 
 	// Process Initiation
-	cgiHandler_ = std::make_unique<CgiHandler>(header, scriptPath, interpreter);
-
-	if (!cgiHandler_->start(
+	try
+	{
+		// Pass callbacks directly to the constructor
+		cgiHandler_ = std::make_unique<CgiHandler>(
+			header,
+			scriptPath,
+			interpreter,
 			[this](std::span<const char> data)
 			{
 				manager_.writeResponseData(data);
@@ -49,9 +55,12 @@ CgiRequestHandler::CgiRequestHandler(IRequestManager &manager, const Header &hea
 				if (bufferSize < PIPE_WRITE_LOW_WATER_MARK)
 					manager_.setReadingBody(true);
 			},
-			{} // ignore script closing its stdin
-			))
+			ReadWriteFD::WritableErrorCallback{} 
+		);
+	}
+	catch (const std::exception &e)
 	{
+		std::cerr << "[CgiRequestHandler] Error starting CGI: " << e.what() << std::endl;
 		manager_.onRequestError();
 		return;
 	}

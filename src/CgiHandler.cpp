@@ -3,6 +3,8 @@
 #include <cstring>
 #include <memory>
 #include <span>
+#include <stdexcept>
+#include <stdlib.h>
 #include <string>
 #include <utility>
 #include <vector>
@@ -18,7 +20,14 @@
 #include "Poll.hpp"
 #include "ReadWriteFD.hpp"
 
-CgiHandler::CgiHandler(Header header, std::string scriptPath, std::string interpreterPath)
+CgiHandler::CgiHandler(Header header, 
+					   std::string scriptPath, 
+					   std::string interpreterPath,
+					   ReadWriteFD::ReadableDataCallback stdoutReadCallback,
+					   ReadWriteFD::ReadableEofCallback stdoutEofCallback,
+					   ReadWriteFD::ReadableErrorCallback stdoutErrorCallback,
+					   ReadWriteFD::WritableDrainCallback stdinDrainCallback,
+					   ReadWriteFD::WritableErrorCallback stdinErrorCallback)
 	: header(std::move(header)),
 	  scriptPath(std::move(scriptPath)),
 	  interpreterPath(std::move(interpreterPath)),
@@ -28,6 +37,64 @@ CgiHandler::CgiHandler(Header header, std::string scriptPath, std::string interp
 	pipeIn[1] = -1;
 	pipeOut[0] = -1;
 	pipeOut[1] = -1;
+
+	// 1. Create Pipes
+	if (pipe(pipeIn) < 0)
+		throw std::runtime_error("CgiHandler: pipe(pipeIn) failed");
+
+	if (pipe(pipeOut) < 0)
+	{
+		cleanupPipes(); // Clean up the first pipe
+		throw std::runtime_error("CgiHandler: pipe(pipeOut) failed");
+	}
+
+	// 2. Set Non-Blocking on Parent Ends
+	if (fcntl(pipeIn[1], F_SETFL, O_NONBLOCK) < 0 ||
+		fcntl(pipeOut[0], F_SETFL, O_NONBLOCK) < 0)
+	{
+		cleanupPipes();
+		throw std::runtime_error("CgiHandler: fcntl failed");
+	}
+
+	// 3. Fork Process
+	pid = fork();
+	if (pid < 0)
+	{
+		cleanupPipes();
+		throw std::runtime_error("CgiHandler: fork failed");
+	}
+
+	if (pid == 0)
+	{
+		setupChild(); // Does not return
+	}
+
+	// Parent: Close unused pipe ends
+	close(pipeIn[0]);
+	pipeIn[0] = -1;
+	close(pipeOut[1]);
+	pipeOut[1] = -1;
+
+	// 4. Wrap FDs and Auto-Start
+	stdoutStream = std::make_unique<ReadWriteFD>(
+		pipeOut[0],
+		stdoutReadCallback,
+		stdoutEofCallback,
+		stdoutErrorCallback,
+		ReadWriteFD::WritableDrainCallback{},
+		ReadWriteFD::WritableErrorCallback{});
+	pipeOut[0] = -1; // Ownership transferred
+
+	stdinStream = std::make_unique<ReadWriteFD>(
+		pipeIn[1],
+		ReadWriteFD::ReadableDataCallback{},
+		ReadWriteFD::ReadableEofCallback{},
+		ReadWriteFD::ReadableErrorCallback{},
+		stdinDrainCallback,
+		stdinErrorCallback);
+	pipeIn[1] = -1; // Ownership transferred
+
+	stdoutStream->startReading();
 }
 
 CgiHandler::~CgiHandler()
@@ -68,66 +135,6 @@ size_t CgiHandler::queueWrite(std::span<const char> data)
 	if (stdinStream)
 		return stdinStream->queueWrite(data);
 	return 0;
-}
-
-bool CgiHandler::start(ReadWriteFD::ReadableDataCallback stdoutReadCallback,
-					   ReadWriteFD::ReadableEofCallback stdoutEofCallback,
-					   ReadWriteFD::ReadableErrorCallback stdoutErrorCallback,
-					   ReadWriteFD::WritableDrainCallback stdinDrainCallback,
-					   ReadWriteFD::WritableErrorCallback stdinErrorCallback)
-{
-	if (pipe(pipeIn) < 0 || pipe(pipeOut) < 0)
-		return false;
-
-	// Parent ends must be non-blocking for the event loop
-	if (fcntl(pipeIn[1], F_SETFL, O_NONBLOCK) < 0 ||
-		fcntl(pipeOut[0], F_SETFL, O_NONBLOCK) < 0)
-	{
-		cleanupPipes();
-		return false;
-	}
-
-	pid = fork();
-	if (pid < 0)
-	{
-		cleanupPipes();
-		return false;
-	}
-
-	if (pid == 0)
-	{
-		setupChild(); // Does not return
-	}
-
-	// Parent: Close unused pipe ends
-	close(pipeIn[0]);
-	pipeIn[0] = -1;
-	close(pipeOut[1]);
-	pipeOut[1] = -1;
-
-	// Wrap the remaining FDs in ReadWriteFD objects for the Event Loop
-	stdoutStream = std::make_unique<ReadWriteFD>(
-		pipeOut[0],
-		stdoutReadCallback,
-		stdoutEofCallback,
-		stdoutErrorCallback,
-		ReadWriteFD::WritableDrainCallback{},
-		ReadWriteFD::WritableErrorCallback{});
-	pipeOut[0] = -1; // FD ownership transferred
-	
-	stdinStream = std::make_unique<ReadWriteFD>(
-		pipeIn[1],
-		ReadWriteFD::ReadableDataCallback{},
-		ReadWriteFD::ReadableEofCallback{},
-		ReadWriteFD::ReadableErrorCallback{},
-		stdinDrainCallback,
-		stdinErrorCallback);
-	pipeIn[1] = -1; // FD ownership transferred
-
-	// Automatically start reading from the script
-	stdoutStream->startReading();
-
-	return true;
 }
 
 void CgiHandler::cleanupPipes()
@@ -186,13 +193,14 @@ void CgiHandler::setupChild()
 
 	std::vector<char *> envp;
 	envp.reserve(envStrs.size() + 1);
-	for (const auto &s : envStrs)
-		envp.push_back(const_cast<char *>(s.c_str()));
+	
+	for (auto &s : envStrs)
+		envp.push_back(s.data());
 	envp.push_back(nullptr);
 
 	char *args[] = {
-		const_cast<char *>(interpreterPath.c_str()),
-		const_cast<char *>(cleanScriptPath.c_str()),
+		interpreterPath.data(),
+		cleanScriptPath.data(),
 		nullptr};
 
 	execve(args[0], args, envp.data());
@@ -202,7 +210,9 @@ void CgiHandler::setupChild()
 std::vector<std::string> CgiHandler::createEnvVariables(const std::string &scriptName, const std::string &queryStr)
 {
 	std::vector<std::string> env;
-	env.reserve(header.all().size() + 10);
+	
+	constexpr size_t fixedVarsCount = 6;
+	env.reserve(header.all().size() + fixedVarsCount);
 
 	env.push_back("REQUEST_METHOD=" + header.method());
 	env.push_back("SERVER_PROTOCOL=HTTP/1.1");

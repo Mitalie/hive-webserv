@@ -21,23 +21,26 @@
 class CgiHandler
 {
 public:
-	CgiHandler(Header header, std::string scriptPath, std::string interpreterPath);
-	~CgiHandler();
-
 	/*
-		Starts the CGI execution flow:
-		1. Creates anonymous pipes.
-		2. Forks the process.
-		3. Wraps the parent-side FDs in ReadWriteFD for non-blocking I/O.
-		4. Automatically starts reading from the script's output (stdout).
-		Returns false if system calls (pipe/fork) fail.
+		Constructor initializes the handler and immediately starts the CGI process.
+		
+		Throws std::runtime_error if system calls (pipe, fork, fcntl) fail.
+		
+		Upon successful construction:
+		1. Anonymous pipes are created.
+		2. Child process is forked and script is running.
+		3. Reading from the script's output (stdout) is automatically started.
 	*/
-	bool start(ReadWriteFD::ReadableDataCallback stdoutReadCallback,
+	CgiHandler(Header header, 
+			   std::string scriptPath, 
+			   std::string interpreterPath,
+			   ReadWriteFD::ReadableDataCallback stdoutReadCallback,
 			   ReadWriteFD::ReadableEofCallback stdoutEofCallback,
 			   ReadWriteFD::ReadableErrorCallback stdoutErrorCallback,
 			   ReadWriteFD::WritableDrainCallback stdinDrainCallback,
 			   ReadWriteFD::WritableErrorCallback stdinErrorCallback);
 
+	~CgiHandler();
 	/*
 		Flow control for the script's output (Server <- Script).
 		Forwarded to the internal stdout stream.
