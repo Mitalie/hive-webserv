@@ -4,7 +4,6 @@
 #include <memory>
 #include <span>
 #include <stdexcept>
-#include <stdlib.h>
 #include <string>
 #include <utility>
 #include <vector>
@@ -39,13 +38,10 @@ CgiHandler::CgiHandler(Header header,
 	pipeOut[1] = -1;
 
 	// 1. Create Pipes
-	if (pipe(pipeIn) < 0)
-		throw std::runtime_error("CgiHandler: pipe(pipeIn) failed");
-
-	if (pipe(pipeOut) < 0)
+	if (pipe(pipeIn) < 0 || pipe(pipeOut) < 0)
 	{
-		cleanupPipes(); // Clean up the first pipe
-		throw std::runtime_error("CgiHandler: pipe(pipeOut) failed");
+		cleanupPipes();
+		throw std::runtime_error("CgiHandler: pipe creation failed");
 	}
 
 	// 2. Set Non-Blocking on Parent Ends
@@ -66,10 +62,9 @@ CgiHandler::CgiHandler(Header header,
 
 	if (pid == 0)
 	{
-		setupChild(); // Does not return
+		setupChild();
 	}
 
-	// Parent: Close unused pipe ends
 	close(pipeIn[0]);
 	pipeIn[0] = -1;
 	close(pipeOut[1]);
@@ -83,7 +78,7 @@ CgiHandler::CgiHandler(Header header,
 		stdoutErrorCallback,
 		ReadWriteFD::WritableDrainCallback{},
 		ReadWriteFD::WritableErrorCallback{});
-	pipeOut[0] = -1; // Ownership transferred
+	pipeOut[0] = -1;
 
 	stdinStream = std::make_unique<ReadWriteFD>(
 		pipeIn[1],
@@ -92,7 +87,7 @@ CgiHandler::CgiHandler(Header header,
 		ReadWriteFD::ReadableErrorCallback{},
 		stdinDrainCallback,
 		stdinErrorCallback);
-	pipeIn[1] = -1; // Ownership transferred
+	pipeIn[1] = -1;
 
 	stdoutStream->startReading();
 }

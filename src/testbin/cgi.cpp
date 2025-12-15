@@ -65,7 +65,6 @@ void runTest(const std::string &testName, const std::string &scriptPath,
 		bool running = true;
 		bool writing = true;
 
-		// Pass callbacks directly to constructor
 		CgiHandler cgi(
 			header, 
 			scriptPath, 

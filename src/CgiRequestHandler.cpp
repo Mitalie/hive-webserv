@@ -31,7 +31,6 @@ CgiRequestHandler::CgiRequestHandler(IRequestManager &manager, const Header &hea
 	// Process Initiation
 	try
 	{
-		// Pass callbacks directly to the constructor
 		cgiHandler_ = std::make_unique<CgiHandler>(
 			header,
 			scriptPath,
