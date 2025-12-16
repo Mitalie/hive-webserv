@@ -7,7 +7,7 @@
 
 #include "ChunkHeaderReader.hpp"
 #include "Config.hpp"
-#include "HeaderReader.hpp"
+#include "RequestHeaderReader.hpp"
 #include "IRequestManager.hpp"
 #include "IRequestHandler.hpp"
 #include "ReadWriteFD.hpp"
@@ -58,14 +58,14 @@ private:
 	/* Incoming data processing */
 
 	ChunkHeaderReader chunkHeaderReader;
-	HeaderReader headerReader;
+	RequestHeaderReader headerReader;
 	std::unique_ptr<IRequestHandler> request;
 	// Keep track of completed request even if request ptr wasn't set yet
 	bool requestDone = false;
 	bool readingPaused = false;
 	bool chunked = false;
 	size_t bodyLen = 0;
-	void createRequestHandler(Header &&header);
+	void createRequestHandler(RequestHeader &&header);
 	void handleDataBody();
 	void handleDataChunkHeader();
 	void handleDataRequestHeader();

@@ -4,12 +4,12 @@
 #include <iostream>
 #include <span>
 
-#include "Header.hpp"
+#include "RequestHeader.hpp"
 #include "IRequestManager.hpp"
 
 DummyRequestHandler::DummyRequestHandler(
 	IRequestManager &manager,
-	Header &&header)
+	RequestHeader &&header)
 {
 	std::cout << "Got request!"
 			  << "\n  Path: " << header.path()
@@ -21,6 +21,11 @@ DummyRequestHandler::DummyRequestHandler(
 void DummyRequestHandler::onBodyData(std::span<const char> data)
 {
 	(void)data;
+}
+
+void DummyRequestHandler::onBodyDone()
+{
+	// Nothing to do for dummy handler
 }
 
 void DummyRequestHandler::notifyResponseBuffer(size_t bufferSize)

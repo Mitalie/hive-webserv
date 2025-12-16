@@ -1,6 +1,6 @@
 #include "AutoindexRequestHandler.hpp"
 #include "IRequestManager.hpp"
-#include "Header.hpp"
+#include "RequestHeader.hpp"
 #include "Config.hpp"
 #include "CallbackQueue.hpp"
 #include <cstddef>
@@ -11,7 +11,7 @@
 #include <vector>
 #include <algorithm>
 
-AutoindexRequestHandler::AutoindexRequestHandler(IRequestManager& manager, const Header& header, const RouteConfig& route)
+AutoindexRequestHandler::AutoindexRequestHandler(IRequestManager& manager, const RequestHeader& header, const RouteConfig& route)
     : manager_(manager), header_(header), route_(route) {
     // Queue callback to generate directory listing from main loop
     CallbackQueue::queueCallback([this]() { generateDirectoryListing(); });

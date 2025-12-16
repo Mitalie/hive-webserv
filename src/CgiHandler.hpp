@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "Header.hpp"
+#include "RequestHeader.hpp"
 #include "ReadWriteFD.hpp"
 
 /*
@@ -31,7 +31,7 @@ public:
 		2. Child process is forked and script is running.
 		3. Reading from the script's output (stdout) is automatically started.
 	*/
-	CgiHandler(Header header, 
+	CgiHandler(RequestHeader header, 
 			   std::string scriptPath, 
 			   std::string interpreterPath,
 			   ReadWriteFD::ReadableDataCallback stdoutReadCallback,
@@ -61,7 +61,7 @@ private:
 	// Helper to translate HTTP headers into CGI environment format
 	std::vector<std::string> createEnvVariables(const std::string &scriptName, const std::string &queryStr);
 
-	Header header;
+	RequestHeader header;
 	std::string scriptPath;
 	std::string interpreterPath;
 

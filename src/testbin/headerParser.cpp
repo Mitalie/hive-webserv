@@ -1,10 +1,10 @@
-#include "Header.hpp" // include the Header declaration so we can use it
-
 #include <cassert>
 #include <cstddef>
 #include <exception>
 #include <iostream> // for std::cout and std::cerr used in the test harness
 #include <string>
+
+#include "RequestHeader.hpp" // include the Header declaration so we can use it
 
 int main()
 {												 // small test program to demonstrate Header parsing
@@ -16,7 +16,7 @@ int main()
 
 	try
 	{
-		Header h(raw_request);							// construct Header and parse in constructor (may throw)
+		RequestHeader h(raw_request);							// construct Header and parse in constructor (may throw)
 		std::cout << "Method: " << h.method() << "\n";	// print parsed method
 		std::cout << "Path:   " << h.path() << "\n";	// print parsed path
 		std::cout << "Ver:    " << h.version() << "\n"; // print parsed HTTP version
@@ -49,7 +49,7 @@ int main()
 		"Host: test.com\r\n";
 
 	try {
-		Header h(repeated);
+		RequestHeader h(repeated);
 		assert(h.method() == "GET");
 		assert(h.path() == "/repeat");
 		assert(h.version() == "HTTP/1.1");
@@ -65,7 +65,7 @@ int main()
 	// Error case: empty input -> should throw
 	bool threw = false;
 	try {
-		Header h("");
+		RequestHeader h("");
 	} catch (const std::exception &) {
 		threw = true;
 	}
@@ -74,7 +74,7 @@ int main()
 	// Error case: malformed request-line
 	threw = false;
 	try {
-		Header h("BADREQUEST\r\nHost: x\r\n");
+		RequestHeader h("BADREQUEST\r\nHost: x\r\n");
 	} catch (const std::exception &) {
 		threw = true;
 	}

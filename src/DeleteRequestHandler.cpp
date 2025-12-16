@@ -1,13 +1,13 @@
 
 #include "DeleteRequestHandler.hpp"
 #include "IRequestManager.hpp"
-#include "Header.hpp"
+#include "RequestHeader.hpp"
 #include "Config.hpp"
 #include "CallbackQueue.hpp"
 #include <filesystem>
 #include <string>
 
-DeleteRequestHandler::DeleteRequestHandler(IRequestManager& manager, const Header& header, const RouteConfig& route)
+DeleteRequestHandler::DeleteRequestHandler(IRequestManager& manager, const RequestHeader& header, const RouteConfig& route)
     : manager_(manager), header_(header), route_(route)
 {
     // Build the file path from route root and request path

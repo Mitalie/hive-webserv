@@ -7,10 +7,12 @@ import os
 import sys
 
 # --- 1. Send HTTP Headers ---
-# This is mandatory! The blank line separates headers from body.
-print("Content-Type: text/html")
-print("Status: 200 OK") # Our parser checks for this!
-print("\r\n") # The \r\n\r\n separator
+# Use sys.stdout.write to send explicit HTTP line endings (\r\n)
+# The parser strictly looks for \r\n\r\n to separate headers from body.
+sys.stdout.write("Content-Type: text/html\r\n")
+sys.stdout.write("Status: 200 OK\r\n")
+sys.stdout.write("\r\n") # Double CRLF marks end of headers
+sys.stdout.flush()
 
 # --- 2. Send The HTML Body ---
 print("<html>")

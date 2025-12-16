@@ -9,7 +9,7 @@
 
 #include "IRequestHandler.hpp"
 #include "IRequestManager.hpp"
-#include "Header.hpp"
+#include "RequestHeader.hpp"
 #include "Config.hpp"
 
 // Forward declarations for handler classes
@@ -50,7 +50,7 @@ bool isPathWithinRoot(const std::filesystem::path& resolvedPath, const std::file
  * @param servers The list of server configurations for a port.
  * @return Pointer to matching ServerConfig, or nullptr if servers is empty.
  */
-const ServerConfig* findServerConfig(const Header& header, const ListenerConfig& servers);
+const ServerConfig* findServerConfig(const RequestHeader& header, const ListenerConfig& servers);
 
 /**
  * Checks if the HTTP method is allowed for the given route.
@@ -79,7 +79,7 @@ bool isCgiRequest(const std::string& path, const std::map<std::string, std::stri
  * @param config The list of server configurations for the port.
  * @return A pointer to the appropriate request handler.
  */
-RequestHandlerPtr router(IRequestManager& manager, const Header& header, const ListenerConfig& config);
+RequestHandlerPtr router(IRequestManager& manager, const RequestHeader& header, const ListenerConfig& config);
 
 // (Optional) Overload for direct route handling. Not implemented.
-// RequestHandlerPtr router(IRequestManager& manager, const Header& header, const RouteConfig& route);
+// RequestHandlerPtr router(IRequestManager& manager, const RequestHeader& header, const RouteConfig& route);

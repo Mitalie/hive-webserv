@@ -9,7 +9,7 @@
 #include "router.hpp"
 #include "IRequestHandler.hpp"
 #include "IRequestManager.hpp"
-#include "Header.hpp"
+#include "RequestHeader.hpp"
 #include "Config.hpp"
 #include "dummies.hpp" // For handler class declarations
 
@@ -67,7 +67,7 @@ bool isPathWithinRoot(const std::filesystem::path& resolvedPath, const std::file
  * serverNames typically don't include ports (per HTTP/1.1, Host can be "host:port").
  * @return Pointer to matching ServerConfig, or nullptr if servers is empty.
  */
-const ServerConfig* findServerConfig(const Header& header, const ListenerConfig& servers) {
+const ServerConfig* findServerConfig(const RequestHeader& header, const ListenerConfig& servers) {
 	// Guard against empty config
 	if (servers.empty())
 		return nullptr;
@@ -133,7 +133,7 @@ bool isCgiRequest(const std::string& path, const std::map<std::string, std::stri
  */
 std::unique_ptr<IRequestHandler> handleRequestForRoute(
 	IRequestManager& manager,
-	const Header& header,
+	const RequestHeader& header,
 	const RouteConfig& route)
 {
 	// 1. Check if method is allowed for this route
@@ -248,7 +248,7 @@ std::unique_ptr<IRequestHandler> handleRequestForRoute(
 /**
  * Main router function. Finds the matching server and route, then delegates to the appropriate handler.
  */
-std::unique_ptr<IRequestHandler> router(IRequestManager& manager, const Header& header, const ListenerConfig& config)
+std::unique_ptr<IRequestHandler> router(IRequestManager& manager, const RequestHeader& header, const ListenerConfig& config)
 {
 	// 1. Find the matching server config (by Host header)
 	const ServerConfig* serverPtr = findServerConfig(header, config);

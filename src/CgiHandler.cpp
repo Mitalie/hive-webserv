@@ -15,13 +15,13 @@
 #include <unistd.h>
 
 #include "CgiHandler.hpp"
-#include "Header.hpp"
+#include "RequestHeader.hpp"
 #include "Poll.hpp"
 #include "ReadWriteFD.hpp"
 #include "UnixFD.hpp"
 
-CgiHandler::CgiHandler(Header header, 
-					   std::string scriptPath, 
+CgiHandler::CgiHandler(RequestHeader header,
+					   std::string scriptPath,
 					   std::string interpreterPath,
 					   ReadWriteFD::ReadableDataCallback stdoutReadCallback,
 					   ReadWriteFD::ReadableEofCallback stdoutEofCallback,
@@ -189,7 +189,7 @@ void CgiHandler::setupChild()
 
 	std::vector<char *> envp;
 	envp.reserve(envStrs.size() + 1);
-	
+
 	for (auto &s : envStrs)
 		envp.push_back(s.data());
 	envp.push_back(nullptr);
@@ -206,7 +206,7 @@ void CgiHandler::setupChild()
 std::vector<std::string> CgiHandler::createEnvVariables(const std::string &scriptName, const std::string &queryStr)
 {
 	std::vector<std::string> env;
-	
+
 	constexpr size_t fixedVarsCount = 6;
 	env.reserve(header.all().size() + fixedVarsCount);
 
