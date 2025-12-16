@@ -47,6 +47,9 @@ int main()
 				in.stopReading();
 			}
 		},
+		{},
+		{},
+		{},
 		{});
 	in.startReading();
 
@@ -59,6 +62,8 @@ int main()
 	bool doneW = false;
 	ReadWriteFD out(
 		1,
+		{},
+		{},
 		{},
 		[&doneW, &out, &outputData, &outputPos](size_t bufferSize)
 		{
@@ -75,7 +80,8 @@ int main()
 			if (outputPos >= outputData.length() && bufferSize == 0)
 				doneW = true;
 			std::cout << "\x1b[33mWrite buffer has " << bufferSize << " bytes queued\x1b[0m" << std::endl;
-		});
+		},
+		{});
 	out.queueWrite(std::span(outputData.data(), outputBufSize));
 
 	// Pump the FDs with poll until both operations are done

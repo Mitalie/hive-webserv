@@ -50,7 +50,8 @@ Listener::Listener(const char *addr, const char *port)
 		fd,
 		[this]()
 		{ onReadable(); },
-		{}); // empty std::function as listening socket is never writable
+		{},	 // listening socket is never writable
+		{}); // ignore errors in test
 	Poll::setReadableInterest(fd, true);
 }
 

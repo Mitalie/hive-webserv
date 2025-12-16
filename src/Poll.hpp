@@ -3,14 +3,46 @@
 #include <functional>
 #include <map>
 
+/*
+	Wrapper around the poll(2) system call.
+	Manages a collection of file descriptors and dispatches events to registered callbacks.
+*/
 class Poll
 {
 public:
-	static void doPoll();
+	/*
+		Executes poll() to check for events on registered file descriptors.
+
+		timeout: Time in milliseconds to wait.
+				 -1 waits indefinitely (blocking).
+				 0 returns immediately (non-blocking).
+				 >0 waits for specific duration.
+	*/
+	static void doPoll(int timeout = -1);
 
 	using Callback = std::function<void()>;
-	static void addFd(int fd, Callback readable, Callback writable);
+
+	/*
+		Registers a file descriptor with specific event callbacks.
+		fd: The file descriptor to monitor.
+		readable: Called when POLLIN or POLLHUP occurs.
+		writable: Called when POLLOUT occurs.
+		error: Called when POLLERR occurs (e.g., broken pipe).
+	*/
+	static void addFd(
+		int fd,
+		Callback readable,
+		Callback writable,
+		Callback error);
+
 	static void removeFd(int fd);
+
+	/*
+		Closes all file descriptors currently tracked by Poll (except stdin/out/err).
+		Crucial for child processes to avoid inheriting open server sockets.
+	*/
+	static void closeAllRegisteredFds();
+
 	static void setReadableInterest(int fd, bool interest);
 	static void setWritableInterest(int fd, bool interest);
 
@@ -24,6 +56,7 @@ private:
 	{
 		Callback readable;
 		Callback writable;
+		Callback error;
 		bool readableInterest;
 		bool writableInterest;
 	};

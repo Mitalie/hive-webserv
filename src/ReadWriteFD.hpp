@@ -8,12 +8,8 @@
 class Poll;
 
 /*
-	Implementation of IReadable and IWritable on standard Unix file descriptors.
-
-	File descriptors must support `read` and `write` system calls. Can be used
-	for read-only or write-only file descriptors, but the user should take care
-	to only use the applicable interface (although Poll likely never reports the
-	wrong mode as ready).
+	Implementation of IReadable and IWritable for standard Unix file descriptors.
+	Provides non-blocking I/O with internal buffering for writes.
 */
 class ReadWriteFD
 {
@@ -24,17 +20,23 @@ public:
 		retained, so the user callback must process or store the entire chunk.
 	*/
 	using ReadableDataCallback = std::function<void(std::span<const char> data)>;
+	using ReadableEofCallback = std::function<void()>;
+	using ReadableErrorCallback = std::function<void()>;
 	/*
 		WritableDrainCallback is called whenever queued data is written to the
 		file, and receives the remaining size of the queue. If the user halted
 		processing to limit the size of the queue, it might now want to resume.
 	*/
 	using WritableDrainCallback = std::function<void(size_t bufferSize)>;
+	using WritableErrorCallback = std::function<void()>;
 
 	ReadWriteFD(
 		int fd,
 		ReadableDataCallback readCallback,
-		WritableDrainCallback writeCallback);
+		ReadableEofCallback readEofCallback,
+		ReadableErrorCallback readErrorCallback,
+		WritableDrainCallback writeCallback,
+		WritableErrorCallback writeErrorCallback);
 	ReadWriteFD(const ReadWriteFD &other) = delete;
 	ReadWriteFD &operator=(const ReadWriteFD &other) = delete;
 	~ReadWriteFD();
@@ -63,9 +65,15 @@ private:
 	int fd;
 
 	ReadableDataCallback readCallback;
+	ReadableEofCallback readEofCallback;
+	ReadableErrorCallback readErrorCallback;
 	void onReadable();
 
 	std::vector<char> writeBuffer;
 	WritableDrainCallback writeCallback;
+	WritableErrorCallback writeErrorCallback;
 	void onWritable();
+
+	// For POLLERR
+	void onError();
 };

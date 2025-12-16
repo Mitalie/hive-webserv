@@ -5,31 +5,31 @@
 #include <stdexcept>
 
 #include <sys/poll.h>
+#include <unistd.h>
 
 // Singleton instance
 Poll Poll::instance;
 
 // TODO: persist pollfd vector instead of rebuilding, and store idx in map
 // TODO: or switch to epoll?
-// TODO: handle POLLERR and/or POLLHUP?
-// TODO: take ownership of FDs for cleanup?
 
 Poll::Poll()
 {
-	// TODO: initialize poll mechanism
+	// epoll: allocate instance
 }
 
 Poll::~Poll()
 {
-	// TODO: cleanup poll mechanism
+	// epoll: release instance
 }
 
-void Poll::doPoll()
+void Poll::doPoll(int timeout)
 {
 	size_t numFds = instance.fdMap.size();
-	// Build pollfd vector for system call
 	std::unique_ptr<pollfd[]> fds(new pollfd[numFds]);
 	size_t fdsIdx = 0;
+
+	// Transform internal map to pollfd array required by the syscall
 	for (auto fdCallbacks : instance.fdMap)
 	{
 		pollfd &current = fds[fdsIdx++];
@@ -40,48 +40,91 @@ void Poll::doPoll()
 		if (fdCallbacks.second.writableInterest)
 			current.events |= POLLOUT;
 	}
-	// Perform system call
-	int res = poll(fds.get(), numFds, -1);
+
+	int res = poll(fds.get(), numFds, timeout);
 	if (res < 0)
 		throw std::runtime_error("poll");
-	// Process results
+
+	// Return immediately on timeout to allow the main loop to perform other tasks
+	if (res == 0)
+		return;
+
 	fdsIdx = 0;
 	while (fdsIdx < numFds)
 	{
-		// TODO: what if one callback modifies an entry that a later callback uses?
 		pollfd &current = fds[fdsIdx++];
-		if (current.revents & POLLIN)
-			instance.fdMap[current.fd].readable();
+
+		// Ensure the FD is still registered (it might have been by callbacks in previous iterations)
+		auto it = instance.fdMap.find(current.fd);
+		if (it == instance.fdMap.end())
+			continue;
+
+		// 1. Handle Errors
+		if (current.revents & POLLERR)
+			if (it->second.error)
+				it->second.error();
+
+		// Check FD again after callback
+		it = instance.fdMap.find(current.fd);
+		if (it == instance.fdMap.end())
+			continue;
+
+		// 2. Handle Read (or Hangup)
+		if (current.revents & (POLLIN | POLLHUP))
+			if (it->second.readable)
+				it->second.readable();
+
+		// Check FD again after callback
+		it = instance.fdMap.find(current.fd);
+		if (it == instance.fdMap.end())
+			continue;
+
+		// 3. Handle Write
 		if (current.revents & POLLOUT)
-			instance.fdMap[current.fd].writable();
+			if (it->second.writable)
+				it->second.writable();
 	}
 }
 
-void Poll::addFd(int fd, Callback readable, Callback writable)
+void Poll::addFd(int fd, Callback readable, Callback writable, Callback error)
 {
-	// TODO: error if exists
+	if (instance.fdMap.find(fd) != instance.fdMap.end())
+		throw std::logic_error("Poll::addFd: fd already registered");
 	instance.fdMap[fd] = {
 		.readable = readable,
 		.writable = writable,
+		.error = error,
 		.readableInterest = false,
 		.writableInterest = false,
 	};
-	// TODO: register with poll mechanism
+	// epoll: register fd
 }
 
 void Poll::removeFd(int fd)
 {
-	// TODO: error if doesn't exist
+	// throws if fd not found
+	instance.fdMap.at(fd);
 	instance.fdMap.erase(fd);
-	// TODO: unregister with poll mechanism
+	// epoll: unregister fd
+}
+
+void Poll::closeAllRegisteredFds()
+{
+	for (const auto &entry : instance.fdMap)
+	{
+		int fd = entry.first;
+		close(fd);
+	}
 }
 
 void Poll::setReadableInterest(int fd, bool interest)
 {
+	// throws if fd not found
 	instance.fdMap.at(fd).readableInterest = interest;
 }
 
 void Poll::setWritableInterest(int fd, bool interest)
 {
+	// throws if fd not found
 	instance.fdMap.at(fd).writableInterest = interest;
 }
