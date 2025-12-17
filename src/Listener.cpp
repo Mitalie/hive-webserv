@@ -19,6 +19,11 @@ Listener::Listener(const char *addr, const char *port)
 		.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV | AI_ADDRCONFIG | AI_PASSIVE,
 		.ai_family = AF_UNSPEC,
 		.ai_socktype = SOCK_STREAM,
+		.ai_protocol = 0,
+		.ai_addrlen = 0,
+		.ai_addr = 0,
+		.ai_canonname = 0,
+		.ai_next = 0,
 	};
 	addrinfo *gaiRes = nullptr;
 	try
