@@ -7,13 +7,11 @@
 
 #include <netdb.h>
 #include <sys/socket.h>
-#include <unistd.h>
 
 #include "ClientHandler.hpp"
 #include "Poll.hpp"
 
 Listener::Listener(const char *addr, const char *port)
-	: fd(-1)
 {
 	addrinfo gaiHint{
 		.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV | AI_ADDRCONFIG | AI_PASSIVE,
@@ -31,7 +29,7 @@ Listener::Listener(const char *addr, const char *port)
 		int gaiErr = getaddrinfo(addr, port, &gaiHint, &gaiRes);
 		if (gaiErr)
 			throw std::runtime_error(std::string("getaddrinfo: ") + gai_strerror(gaiErr));
-		fd = socket(gaiRes->ai_family, gaiRes->ai_socktype, gaiRes->ai_protocol);
+		fd = UnixFD(socket(gaiRes->ai_family, gaiRes->ai_socktype, gaiRes->ai_protocol));
 		if (fd < 0)
 			throw std::runtime_error(std::string("socket: ") + strerror(errno));
 		int bindErr = bind(fd, gaiRes->ai_addr, gaiRes->ai_addrlen);
@@ -43,11 +41,9 @@ Listener::Listener(const char *addr, const char *port)
 	}
 	catch (...)
 	{
-		// TODO: wrap fd and gaiRes with classes to avoid manual catch-cleanup-rethrow
+		// TODO: wrap gaiRes with RAII to avoid manual catch-cleanup-rethrow
 		if (gaiRes)
 			freeaddrinfo(gaiRes);
-		if (fd >= 0)
-			close(fd);
 		throw;
 	}
 	freeaddrinfo(gaiRes);
@@ -63,7 +59,6 @@ Listener::Listener(const char *addr, const char *port)
 Listener::~Listener()
 {
 	Poll::removeFd(fd);
-	close(fd);
 }
 
 void Listener::onReadable()
@@ -74,5 +69,5 @@ void Listener::onReadable()
 	if (connFd < 0)
 		throw std::runtime_error(std::string("accept: ") + strerror(errno));
 	// TODO: manage ClientHandler lifecycle somehow
-	new ClientHandler(connFd);
+	new ClientHandler(UnixFD(connFd));
 }

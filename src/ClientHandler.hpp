@@ -9,6 +9,7 @@
 #include "HeaderReader.hpp"
 #include "IRequestManager.hpp"
 #include "ReadWriteFD.hpp"
+#include "UnixFD.hpp"
 
 class Poll;
 class DummyRequestHandler;
@@ -25,7 +26,7 @@ class DummyRequestHandler;
 class ClientHandler : public IRequestManager
 {
 public:
-	ClientHandler(int fd);
+	ClientHandler(UnixFD &&fd);
 	ClientHandler(const ClientHandler &other) = delete;
 	ClientHandler &operator=(const ClientHandler &other) = delete;
 	~ClientHandler();

@@ -5,6 +5,7 @@
 #include "CallbackQueue.hpp"
 #include "ClientHandler.hpp"
 #include "Poll.hpp"
+#include "UnixFD.hpp"
 
 int main()
 {
@@ -12,7 +13,7 @@ int main()
 	if (fd < 0)
 		return EXIT_FAILURE;
 
-	ClientHandler s(fd);
+	ClientHandler s(UnixFD{fd});
 
 	while (true)
 	{

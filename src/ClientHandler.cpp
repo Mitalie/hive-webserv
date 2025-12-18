@@ -11,10 +11,11 @@
 #include "CallbackQueue.hpp"
 #include "Header.hpp"
 #include "DummyRequestHandler.hpp"
+#include "UnixFD.hpp"
 
-ClientHandler::ClientHandler(int fd)
+ClientHandler::ClientHandler(UnixFD &&fd)
 	: socket(
-		  fd,
+		  std::move(fd),
 		  [this](std::span<const char> newData)
 		  { socketReadCallback(newData); },
 		  {}, // TODO: handle EOF

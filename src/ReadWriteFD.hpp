@@ -5,6 +5,8 @@
 #include <span>
 #include <vector>
 
+#include "UnixFD.hpp"
+
 class Poll;
 
 /*
@@ -31,7 +33,7 @@ public:
 	using WritableErrorCallback = std::function<void()>;
 
 	ReadWriteFD(
-		int fd,
+		UnixFD &&fd,
 		ReadableDataCallback readCallback,
 		ReadableEofCallback readEofCallback,
 		ReadableErrorCallback readErrorCallback,
@@ -62,7 +64,7 @@ public:
 	static const size_t maxReadSize = 4096;
 
 private:
-	int fd;
+	UnixFD fd;
 
 	ReadableDataCallback readCallback;
 	ReadableEofCallback readEofCallback;

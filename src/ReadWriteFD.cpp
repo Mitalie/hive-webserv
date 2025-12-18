@@ -8,15 +8,16 @@
 #include <unistd.h>
 
 #include "Poll.hpp"
+#include "UnixFD.hpp"
 
 ReadWriteFD::ReadWriteFD(
-	int fd,
+	UnixFD &&fd,
 	ReadableDataCallback readCallback,
 	ReadableEofCallback readEofCallback,
 	ReadableErrorCallback readErrorCallback,
 	WritableDrainCallback writeCallback,
 	WritableErrorCallback writeErrorCallback)
-	: fd(fd),
+	: fd(std::move(fd)),
 	  readCallback(std::move(readCallback)),
 	  readEofCallback(std::move(readEofCallback)),
 	  readErrorCallback(std::move(readErrorCallback)),
@@ -24,7 +25,7 @@ ReadWriteFD::ReadWriteFD(
 	  writeErrorCallback(std::move(writeErrorCallback))
 {
 	Poll::addFd(
-		fd,
+		this->fd,
 		[this]()
 		{ onReadable(); },
 		[this]()
@@ -36,9 +37,6 @@ ReadWriteFD::ReadWriteFD(
 ReadWriteFD::~ReadWriteFD()
 {
 	Poll::removeFd(fd);
-	// RAII: Ensure the file descriptor is closed when the wrapper is destroyed.
-	if (fd >= 0)
-		close(fd);
 }
 
 void ReadWriteFD::startReading()
