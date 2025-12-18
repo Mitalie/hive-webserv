@@ -23,28 +23,24 @@ public:
 	using Callback = std::function<void()>;
 
 	/*
-		Registers a file descriptor with specific event callbacks.
-		fd: The file descriptor to monitor.
-		readable: Called when POLLIN or POLLHUP occurs.
-		writable: Called when POLLOUT occurs.
-		error: Called when POLLERR occurs (e.g., broken pipe).
-	*/
-	static void addFd(
-		int fd,
-		Callback readable,
-		Callback writable,
-		Callback error);
-
-	static void removeFd(int fd);
-
-	/*
 		Closes all file descriptors currently tracked by Poll (except stdin/out/err).
 		Crucial for child processes to avoid inheriting open server sockets.
 	*/
 	static void closeAllRegisteredFds();
 
-	static void setReadableInterest(int fd, bool interest);
-	static void setWritableInterest(int fd, bool interest);
+	class FDs // Poll FD management, intended for use by UnixFD class only
+	{
+		friend class UnixFD; // Allow UnixFD to call the private functions
+
+		static void addFd(
+			int fd,
+			Callback readable,
+			Callback writable,
+			Callback error);
+		static void removeFd(int fd);
+		static void setReadableInterest(int fd, bool interest);
+		static void setWritableInterest(int fd, bool interest);
+	};
 
 private:
 	Poll();

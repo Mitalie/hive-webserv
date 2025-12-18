@@ -86,7 +86,7 @@ void Poll::doPoll(int timeout)
 	}
 }
 
-void Poll::addFd(int fd, Callback readable, Callback writable, Callback error)
+void Poll::FDs::addFd(int fd, Callback readable, Callback writable, Callback error)
 {
 	if (instance.fdMap.find(fd) != instance.fdMap.end())
 		throw std::logic_error("Poll::addFd: fd already registered");
@@ -100,7 +100,7 @@ void Poll::addFd(int fd, Callback readable, Callback writable, Callback error)
 	// epoll: register fd
 }
 
-void Poll::removeFd(int fd)
+void Poll::FDs::removeFd(int fd)
 {
 	instance.fdMap.erase(fd);
 	// epoll: unregister fd
@@ -115,13 +115,13 @@ void Poll::closeAllRegisteredFds()
 	}
 }
 
-void Poll::setReadableInterest(int fd, bool interest)
+void Poll::FDs::setReadableInterest(int fd, bool interest)
 {
 	// throws if fd not found
 	instance.fdMap.at(fd).readableInterest = interest;
 }
 
-void Poll::setWritableInterest(int fd, bool interest)
+void Poll::FDs::setWritableInterest(int fd, bool interest)
 {
 	// throws if fd not found
 	instance.fdMap.at(fd).writableInterest = interest;

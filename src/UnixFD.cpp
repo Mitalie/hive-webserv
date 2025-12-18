@@ -30,7 +30,7 @@ UnixFD::~UnixFD()
 {
 	if (fd >= 0)
 	{
-		Poll::removeFd(fd);
+		Poll::FDs::removeFd(fd);
 		close(fd);
 	}
 }
@@ -45,15 +45,15 @@ void UnixFD::addToPoll(
 	Poll::Callback writable,
 	Poll::Callback error)
 {
-	Poll::addFd(fd, readable, writable, error);
+	Poll::FDs::addFd(fd, readable, writable, error);
 }
 
 void UnixFD::setReadableInterest(bool interest)
 {
-	Poll::setReadableInterest(fd, interest);
+	Poll::FDs::setReadableInterest(fd, interest);
 }
 
 void UnixFD::setWritableInterest(bool interest)
 {
-	Poll::setWritableInterest(fd, interest);
+	Poll::FDs::setWritableInterest(fd, interest);
 }
