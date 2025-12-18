@@ -4,6 +4,8 @@
 
 #include <unistd.h>
 
+#include "Poll.hpp"
+
 UnixFD::UnixFD(int fd)
 	: fd(fd)
 {
@@ -27,10 +29,31 @@ UnixFD &UnixFD::operator=(UnixFD &&other)
 UnixFD::~UnixFD()
 {
 	if (fd >= 0)
+	{
+		Poll::removeFd(fd);
 		close(fd);
+	}
 }
 
 UnixFD::operator int() const
 {
 	return fd;
+}
+
+void UnixFD::addToPoll(
+	Poll::Callback readable,
+	Poll::Callback writable,
+	Poll::Callback error)
+{
+	Poll::addFd(fd, readable, writable, error);
+}
+
+void UnixFD::setReadableInterest(bool interest)
+{
+	Poll::setReadableInterest(fd, interest);
+}
+
+void UnixFD::setWritableInterest(bool interest)
+{
+	Poll::setWritableInterest(fd, interest);
 }

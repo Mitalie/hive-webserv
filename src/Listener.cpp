@@ -9,7 +9,6 @@
 #include <sys/socket.h>
 
 #include "ClientHandler.hpp"
-#include "Poll.hpp"
 
 Listener::Listener(const char *addr, const char *port)
 {
@@ -47,18 +46,16 @@ Listener::Listener(const char *addr, const char *port)
 		throw;
 	}
 	freeaddrinfo(gaiRes);
-	Poll::addFd(
-		fd,
+	fd.addToPoll(
 		[this]()
 		{ onReadable(); },
 		{},	 // listening socket is never writable
 		{}); // ignore errors in test
-	Poll::setReadableInterest(fd, true);
+	fd.setReadableInterest(true);
 }
 
 Listener::~Listener()
 {
-	Poll::removeFd(fd);
 }
 
 void Listener::onReadable()

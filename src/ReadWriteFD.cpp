@@ -7,7 +7,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "Poll.hpp"
 #include "UnixFD.hpp"
 
 ReadWriteFD::ReadWriteFD(
@@ -24,8 +23,7 @@ ReadWriteFD::ReadWriteFD(
 	  writeCallback(std::move(writeCallback)),
 	  writeErrorCallback(std::move(writeErrorCallback))
 {
-	Poll::addFd(
-		this->fd,
+	this->fd.addToPoll(
 		[this]()
 		{ onReadable(); },
 		[this]()
@@ -36,17 +34,16 @@ ReadWriteFD::ReadWriteFD(
 
 ReadWriteFD::~ReadWriteFD()
 {
-	Poll::removeFd(fd);
 }
 
 void ReadWriteFD::startReading()
 {
-	Poll::setReadableInterest(fd, true);
+	fd.setReadableInterest(true);
 }
 
 void ReadWriteFD::stopReading()
 {
-	Poll::setReadableInterest(fd, false);
+	fd.setReadableInterest(false);
 }
 
 void ReadWriteFD::onReadable()
@@ -74,7 +71,7 @@ void ReadWriteFD::onReadable()
 size_t ReadWriteFD::queueWrite(std::span<const char> data)
 {
 	if (writeBuffer.empty() && data.size())
-		Poll::setWritableInterest(fd, true);
+		fd.setWritableInterest(true);
 	writeBuffer.insert(writeBuffer.end(), data.begin(), data.end());
 	return writeBuffer.size();
 }
@@ -96,7 +93,7 @@ void ReadWriteFD::onWritable()
 		writeCallback(writeBuffer.size());
 
 	if (writeBuffer.empty())
-		Poll::setWritableInterest(fd, false);
+		fd.setWritableInterest(false);
 }
 
 void ReadWriteFD::onError()

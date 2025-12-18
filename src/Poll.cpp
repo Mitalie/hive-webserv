@@ -102,8 +102,6 @@ void Poll::addFd(int fd, Callback readable, Callback writable, Callback error)
 
 void Poll::removeFd(int fd)
 {
-	// throws if fd not found
-	instance.fdMap.at(fd);
 	instance.fdMap.erase(fd);
 	// epoll: unregister fd
 }
