@@ -13,7 +13,7 @@ int main()
 	if (fd < 0)
 		return EXIT_FAILURE;
 
-	ClientHandler s(UnixFD{fd});
+	ClientHandler s({}, UnixFD(fd));
 
 	while (true)
 	{

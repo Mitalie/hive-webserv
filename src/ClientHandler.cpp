@@ -9,12 +9,14 @@
 #include <utility>
 
 #include "CallbackQueue.hpp"
+#include "Config.hpp"
 #include "Header.hpp"
 #include "DummyRequestHandler.hpp"
 #include "UnixFD.hpp"
 
-ClientHandler::ClientHandler(UnixFD &&fd)
-	: socket(
+ClientHandler::ClientHandler(const ListenerConfig &config, UnixFD &&fd)
+	: config(config),
+	  socket(
 		  std::move(fd),
 		  [this](std::span<const char> newData)
 		  { socketReadCallback(newData); },

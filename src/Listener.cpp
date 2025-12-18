@@ -10,6 +10,7 @@
 #include <sys/socket.h>
 
 #include "ClientHandler.hpp"
+#include "Config.hpp"
 
 struct AddrinfoDeleter
 {
@@ -21,7 +22,8 @@ struct AddrinfoDeleter
 };
 using Addrinfo = std::unique_ptr<addrinfo, AddrinfoDeleter>;
 
-Listener::Listener(const char *addr, const char *port)
+Listener::Listener(const HostPort &hostport, const ListenerConfig &config)
+	: config(config)
 {
 	addrinfo gaiHint{
 		.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV | AI_ADDRCONFIG | AI_PASSIVE,
@@ -34,7 +36,7 @@ Listener::Listener(const char *addr, const char *port)
 		.ai_next = 0,
 	};
 	addrinfo *gaiResRaw = nullptr;
-	int gaiErr = getaddrinfo(addr, port, &gaiHint, &gaiResRaw);
+	int gaiErr = getaddrinfo(hostport.host.c_str(), hostport.port.c_str(), &gaiHint, &gaiResRaw);
 	Addrinfo gaiRes(gaiResRaw);
 	if (gaiErr)
 		throw std::runtime_error(std::string("getaddrinfo: ") + gai_strerror(gaiErr));
@@ -67,5 +69,5 @@ void Listener::onReadable()
 	if (connFd < 0)
 		throw std::runtime_error(std::string("accept: ") + strerror(errno));
 	// TODO: manage ClientHandler lifecycle somehow
-	new ClientHandler(UnixFD(connFd));
+	new ClientHandler(config, UnixFD(connFd));
 }

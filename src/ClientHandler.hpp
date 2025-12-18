@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "ChunkHeaderReader.hpp"
+#include "Config.hpp"
 #include "HeaderReader.hpp"
 #include "IRequestManager.hpp"
 #include "ReadWriteFD.hpp"
@@ -26,7 +27,7 @@ class DummyRequestHandler;
 class ClientHandler : public IRequestManager
 {
 public:
-	ClientHandler(UnixFD &&fd);
+	ClientHandler(const ListenerConfig &config, UnixFD &&fd);
 	ClientHandler(const ClientHandler &other) = delete;
 	ClientHandler &operator=(const ClientHandler &other) = delete;
 	~ClientHandler();
@@ -39,6 +40,8 @@ public:
 	virtual void onRequestError() override;
 
 private:
+	const ListenerConfig &config;
+
 	/* IO handling and buffering */
 
 	ReadWriteFD socket;
