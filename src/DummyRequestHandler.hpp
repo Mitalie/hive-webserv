@@ -2,7 +2,7 @@
 
 #include "IRequestHandler.hpp"
 #include "IRequestManager.hpp"
-#include "Header.hpp"
+#include "RequestHeader.hpp"
 
 /*
 	Dummy request handler for testing client handler.
@@ -14,10 +14,11 @@ class DummyRequestHandler : public IRequestHandler
 public:
 	DummyRequestHandler(
 		IRequestManager &manager,
-		Header &&header);
+		RequestHeader &&header);
 	DummyRequestHandler(const DummyRequestHandler &) = delete;
 	DummyRequestHandler &operator=(const DummyRequestHandler &) = delete;
 
 	virtual void onBodyData(std::span<const char> data) override;
+	virtual void onBodyDone() override;
 	virtual void notifyResponseBuffer(size_t bufferSize) override;
 };

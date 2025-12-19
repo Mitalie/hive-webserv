@@ -1,12 +1,12 @@
 
 #include "ErrorRequestHandler.hpp"
 #include "IRequestManager.hpp"
-#include "Header.hpp"
+#include "RequestHeader.hpp"
 #include <span>
 #include <cstddef>
 #include <string>
 
-ErrorRequestHandler::ErrorRequestHandler(IRequestManager& manager, const Header& header, int code)
+ErrorRequestHandler::ErrorRequestHandler(IRequestManager& manager, const RequestHeader& header, int code)
     : manager_(manager), header_(header), code_(code) {
     // Do all work in constructor - send error response immediately
     sendResponse();

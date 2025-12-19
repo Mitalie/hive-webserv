@@ -10,7 +10,7 @@
 
 #include "CallbackQueue.hpp"
 #include "Config.hpp"
-#include "Header.hpp"
+#include "RequestHeader.hpp"
 #include "UnixFD.hpp"
 #include "router.hpp"
 
@@ -59,7 +59,7 @@ void ClientHandler::onRequestError()
 	// TODO: abort connection
 }
 
-void ClientHandler::createRequestHandler(Header &&header)
+void ClientHandler::createRequestHandler(RequestHeader &&header)
 {
 	// TODO: maybe process body length / mode within header parser?
 	std::string cl = header.get("content-length");
@@ -85,7 +85,7 @@ void ClientHandler::createRequestHandler(Header &&header)
 void ClientHandler::handleDataRequestHeader()
 {
 	// The reader will consume bytes until end of header
-	std::optional<Header> header = headerReader.tryParse(availableData);
+	std::optional<RequestHeader> header = headerReader.tryParse(availableData);
 	if (header)
 		createRequestHandler(std::move(*header));
 }
@@ -98,9 +98,15 @@ void ClientHandler::handleDataChunkHeader()
 	{
 		bodyLen = *chunkLen;
 		if (bodyLen == 0)
+		{
 			// End of chunked body
 			// TODO: parse and consume trailers
 			chunked = false;
+			
+		// 	// NEW: Signal handler that body is complete
+		// 	if (request)
+		// 		request->onBodyDone();
+		}
 	}
 }
 
@@ -109,10 +115,17 @@ void ClientHandler::handleDataBody()
 	size_t usableLen = std::min(bodyLen, availableData.size());
 	if (request)
 		request->onBodyData(availableData.subspan(0, usableLen));
+	
 	// If there is no current handler, the previous one completed without
 	// waiting for entire body. Consume the body bytes either way.
 	availableData = availableData.subspan(usableLen);
 	bodyLen -= usableLen;
+
+	// // NEW: Check if this was the last piece of a Content-Length body
+	// if (bodyLen == 0 && !chunked && request)
+	// {
+	// 	request->onBodyDone();
+	// }
 }
 
 void ClientHandler::handleData()

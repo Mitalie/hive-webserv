@@ -1,12 +1,12 @@
 #include "RedirectRequestHandler.hpp"
 #include "IRequestManager.hpp"
-#include "Header.hpp"
+#include "RequestHeader.hpp"
 #include <span>
 #include <cstddef>
 #include <string>
 
 
-RedirectRequestHandler::RedirectRequestHandler(IRequestManager& manager, const Header& header, const std::string& location, int code)
+RedirectRequestHandler::RedirectRequestHandler(IRequestManager& manager, const RequestHeader& header, const std::string& location, int code)
     : manager_(manager), header_(header), location_(location), code_(code) {
     // Do all work in constructor - send redirect response immediately
     

@@ -2,7 +2,7 @@
 
 #include "IRequestHandler.hpp"
 #include "IRequestManager.hpp"
-#include "Header.hpp"
+#include "RequestHeader.hpp"
 #include "Config.hpp"
 #include <string>
 #include <fstream>
@@ -11,13 +11,13 @@
 
 class FileRequestHandler : public IRequestHandler {
 public:
-    FileRequestHandler(IRequestManager& manager, const Header& header, const RouteConfig& route);
+    FileRequestHandler(IRequestManager& manager, const RequestHeader& header, const RouteConfig& route);
     virtual ~FileRequestHandler();
     void onBodyData(std::span<const char> data) override;
     void notifyResponseBuffer(size_t bufferSize) override;
 private:
     IRequestManager& manager_;
-    Header header_;
+    RequestHeader header_;
     RouteConfig route_;
     std::ifstream inFile_;
     std::string filePath_;

@@ -6,9 +6,10 @@
 #include <vector>
 #include <span>
 #include <cstdlib> // For getenv
+
 #include "CgiHandler.hpp"
 #include "Poll.hpp"
-#include "Header.hpp"
+#include "RequestHeader.hpp"
 
 void runTest(const std::string &testName, const std::string &scriptPath,
 			 const std::string &interpreter, std::ostream &out = std::cout,
@@ -60,7 +61,7 @@ void runTest(const std::string &testName, const std::string &scriptPath,
 
 	try
 	{
-		Header header(rawHeader);
+		RequestHeader header(rawHeader);
 		
 		bool running = true;
 		bool writing = true;

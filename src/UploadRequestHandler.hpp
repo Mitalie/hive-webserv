@@ -2,7 +2,7 @@
 
 #include "IRequestHandler.hpp"
 #include "IRequestManager.hpp"
-#include "Header.hpp"
+#include "RequestHeader.hpp"
 #include "Config.hpp"
 #include <string>
 #include <span>
@@ -11,13 +11,13 @@
 
 class UploadRequestHandler : public IRequestHandler {
 public:
-    UploadRequestHandler(IRequestManager& manager, const Header& header, const RouteConfig& route);
+    UploadRequestHandler(IRequestManager& manager, const RequestHeader& header, const RouteConfig& route);
     virtual ~UploadRequestHandler();
     void onBodyData(std::span<const char> data) override;
     void notifyResponseBuffer(size_t bufferSize) override;
 private:
     IRequestManager& manager_;
-    Header header_;
+    RequestHeader header_;
     RouteConfig route_;
     std::ofstream outFile_;
     bool done_ = false;

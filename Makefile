@@ -17,8 +17,9 @@ SRCS := $(addprefix $(SRCDIR)/,\
 	ChunkHeaderReader.cpp \
 	ClientHandler.cpp \
 	DummyRequestHandler.cpp \
-	Header.cpp \
-	HeaderReader.cpp \
+	RequestHeader.cpp \
+	HeaderFields.cpp \
+	RequestHeaderReader.cpp \
 	Listener.cpp \
 	Poll.cpp \
 	ReadWriteFD.cpp \
@@ -34,6 +35,7 @@ SRCS := $(addprefix $(SRCDIR)/,\
 	CgiRequestHandler.cpp \
 	AutoindexRequestHandler.cpp \
 	DeleteRequestHandler.cpp \
+	Utils.cpp \
 )
 
 # Project targets

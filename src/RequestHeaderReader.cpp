@@ -1,5 +1,3 @@
-#include "HeaderReader.hpp"
-
 #include <algorithm>
 #include <cstddef>
 #include <optional>
@@ -7,13 +5,14 @@
 #include <stdexcept>
 #include <string_view>
 
-#include "Header.hpp"
+#include "RequestHeaderReader.hpp"
+#include "RequestHeader.hpp"
 
 constexpr std::string_view terminator = "\r\n\r\n";
 // We may have all except last char of terminator already in buffer.
 constexpr size_t scanBacktrack = terminator.length() - 1;
 
-std::optional<Header> HeaderReader::tryParse(std::span<const char> &incomingData)
+std::optional<RequestHeader> RequestHeaderReader::tryParse(std::span<const char> &incomingData)
 {
 	size_t oldBufLen = buffer.length();
 	size_t scanStart = 0;
@@ -35,7 +34,7 @@ std::optional<Header> HeaderReader::tryParse(std::span<const char> &incomingData
 	size_t remainderStartInBuf = headerLen + terminator.length();
 	size_t remainderStartInChunk = remainderStartInBuf - oldBufLen;
 	incomingData = incomingData.subspan(remainderStartInChunk);
-	Header parsed(std::string_view(buffer.data(), headerLen));
+	RequestHeader parsed(std::string_view(buffer.data(), headerLen + 2));
 	buffer.clear();
 	return parsed;
 }

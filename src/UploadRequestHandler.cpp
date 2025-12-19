@@ -1,6 +1,6 @@
 #include "UploadRequestHandler.hpp"
 #include "IRequestManager.hpp"
-#include "Header.hpp"
+#include "RequestHeader.hpp"
 #include "Config.hpp"
 #include <cstddef>
 #include <filesystem>
@@ -9,7 +9,7 @@
 #include <span>
 #include <system_error>
 
-UploadRequestHandler::UploadRequestHandler(IRequestManager& manager, const Header& header, const RouteConfig& route)
+UploadRequestHandler::UploadRequestHandler(IRequestManager& manager, const RequestHeader& header, const RouteConfig& route)
     : manager_(manager), header_(header), route_(route), done_(false), fileOpen_(false) {
     // 1. Ensure upload directory exists
     std::error_code ec;

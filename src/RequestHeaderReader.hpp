@@ -4,13 +4,13 @@
 #include <span>
 #include <string>
 
-#include "Header.hpp"
+#include "RequestHeader.hpp"
 
 /*
 	HTTP header reader that buffers incoming data until it finds the end of a
 	header, and then parses the contents.
 */
-class HeaderReader
+class RequestHeaderReader
 {
 public:
 	/*
@@ -19,10 +19,10 @@ public:
 
 		If the end of the header is not found, consume the entire chunk, and
 		return nothing. If the end of the header is found, consume data until
-		the end (including the terminating empty line), and return a Header
+		the end (including the terminating empty line), and return a RequestHeader
 		instance parsed from the consumed data.
 	*/
-	std::optional<Header> tryParse(std::span<const char> &incomingData);
+	std::optional<RequestHeader> tryParse(std::span<const char> &incomingData);
 
 private:
 	std::string buffer;
