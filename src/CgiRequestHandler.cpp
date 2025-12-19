@@ -37,7 +37,10 @@ CgiRequestHandler::CgiRequestHandler(IRequestManager &manager, const Header &hea
 			interpreter,
 			[this](std::span<const char> data)
 			{
-				manager_.writeResponseData(data);
+				size_t bufferSize = manager_.writeResponseData(data);
+				// Backpressure: If send buffer is full, stop reading from CGI
+				if (bufferSize > CLIENT_SEND_HIGH_WATER_MARK)
+					cgiHandler_->stopReading();
 			},
 			[this]()
 			{
@@ -54,8 +57,7 @@ CgiRequestHandler::CgiRequestHandler(IRequestManager &manager, const Header &hea
 				if (bufferSize < PIPE_WRITE_LOW_WATER_MARK)
 					manager_.setReadingBody(true);
 			},
-			ReadWriteFD::WritableErrorCallback{} 
-		);
+			ReadWriteFD::WritableErrorCallback{});
 	}
 	catch (const std::exception &e)
 	{
@@ -116,12 +118,8 @@ void CgiRequestHandler::notifyResponseBuffer(size_t bufferSize)
 	if (!cgiHandler_)
 		return;
 
-	// Backpressure: If client socket is full, stop reading from CGI
-	if (bufferSize > CLIENT_SEND_HIGH_WATER_MARK)
-	{
-		cgiHandler_->stopReading();
-	}
-	else
+	// Backpressure: Send buffer is no longer full, resume reading from CGI
+	if (bufferSize <= CLIENT_SEND_HIGH_WATER_MARK)
 	{
 		cgiHandler_->startReading();
 	}

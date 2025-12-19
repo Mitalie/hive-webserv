@@ -37,12 +37,10 @@ void ClientHandler::setReadingBody(bool reading)
 	updateWakeup();
 }
 
-void ClientHandler::writeResponseData(std::span<const char> data)
+size_t ClientHandler::writeResponseData(std::span<const char> data)
 {
 	// TODO: implement max buffer size even if simple handlers don't?
-	size_t bufferSize = socket.queueWrite(data);
-	// This should only be called from IRequestHandler, so request won't be null.
-	request->notifyResponseBuffer(bufferSize);
+	return socket.queueWrite(data);
 }
 
 void ClientHandler::onRequestDone()

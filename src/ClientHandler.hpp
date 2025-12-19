@@ -33,7 +33,7 @@ public:
 	/* IRequestManager functions */
 
 	virtual void setReadingBody(bool reading) override;
-	virtual void writeResponseData(std::span<const char> data) override;
+	virtual size_t writeResponseData(std::span<const char> data) override;
 	virtual void onRequestDone() override;
 	virtual void onRequestError() override;
 

@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <exception>
 #include <iostream>
 #include <span>
@@ -18,9 +19,10 @@ public:
 	bool isDone = false;
 	bool gotError = false;
 
-	void writeResponseData(std::span<const char> data) override
+	size_t writeResponseData(std::span<const char> data) override
 	{
 		std::cout << "   [MOCK] Received " << data.size() << " bytes." << std::endl;
+		return 0;
 	}
 	void onRequestDone() override
 	{

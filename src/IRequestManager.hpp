@@ -19,12 +19,15 @@ public:
 	virtual void setReadingBody(bool reading) = 0;
 
 	/*
-		Write response data to the output connection. The request manager calls
-		IRequestHandler::notifyResponseBuffer to report the write buffer length
-		whenever it changes, either when writing more data to the buffer or when
-		flushing buffered data to the socket.
+		Write response data to the output connection. The data is buffered, and
+		the length of the buffer is returned so that the handler can pause
+		processing if the buffer grows too large.
+
+		The returned length may include not-yet-flushed data written by previous
+		requests, but it doesn't include data already accepted into operating
+		system buffers.
 	*/
-	virtual void writeResponseData(std::span<const char> data) = 0;
+	virtual size_t writeResponseData(std::span<const char> data) = 0;
 
 	/*
 		Report that the request handler has finished processing and has written

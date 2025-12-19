@@ -26,9 +26,10 @@ public:
 	virtual void onBodyData(std::span<const char> data) = 0;
 
 	/*
-		Report the status of the response buffer to the request handler so that
-		it can pause processing if the buffer grows too large. The reported
-		length may include not-yet-flushed data written by previous requests.
+		Update the write buffer length (of IRequestManager::writeResponseData)
+		whenever data is moved from the internal buffer to the operating system.
+		If the handler previously paused processing due to large buffer size, it
+		can use this information to resume.
 	*/
 	virtual void notifyResponseBuffer(size_t bufferSize) = 0;
 };
