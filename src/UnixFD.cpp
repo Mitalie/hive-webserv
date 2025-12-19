@@ -1,0 +1,59 @@
+#include "UnixFD.hpp"
+
+#include <utility>
+
+#include <unistd.h>
+
+#include "Poll.hpp"
+
+UnixFD::UnixFD(int fd)
+	: fd(fd)
+{
+}
+
+UnixFD::UnixFD(UnixFD &&other)
+	: fd(other.fd)
+{
+	other.fd = -1;
+}
+
+UnixFD &UnixFD::operator=(UnixFD &&other)
+{
+	// Destructor of tmp cleans up old this->fd
+	// In case of self-assignment, tmp steals fd and swap puts it back
+	UnixFD tmp(std::move(other));
+	std::swap(fd, tmp.fd);
+	return *this;
+}
+
+UnixFD::~UnixFD()
+{
+	if (fd >= 0)
+	{
+		Poll::FDs::removeFd(fd);
+		close(fd);
+	}
+}
+
+UnixFD::operator int() const
+{
+	return fd;
+}
+
+void UnixFD::addToPoll(
+	Poll::Callback readable,
+	Poll::Callback writable,
+	Poll::Callback error)
+{
+	Poll::FDs::addFd(fd, readable, writable, error);
+}
+
+void UnixFD::setReadableInterest(bool interest)
+{
+	Poll::FDs::setReadableInterest(fd, interest);
+}
+
+void UnixFD::setWritableInterest(bool interest)
+{
+	Poll::FDs::setWritableInterest(fd, interest);
+}

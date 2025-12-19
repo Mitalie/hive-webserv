@@ -18,6 +18,7 @@
 #include "Header.hpp"
 #include "Poll.hpp"
 #include "ReadWriteFD.hpp"
+#include "UnixFD.hpp"
 
 CgiHandler::CgiHandler(Header header, 
 					   std::string scriptPath, 
@@ -72,7 +73,7 @@ CgiHandler::CgiHandler(Header header,
 
 	// 4. Wrap FDs and Auto-Start
 	stdoutStream = std::make_unique<ReadWriteFD>(
-		pipeOut[0],
+		UnixFD(pipeOut[0]),
 		stdoutReadCallback,
 		stdoutEofCallback,
 		stdoutErrorCallback,
@@ -81,7 +82,7 @@ CgiHandler::CgiHandler(Header header,
 	pipeOut[0] = -1;
 
 	stdinStream = std::make_unique<ReadWriteFD>(
-		pipeIn[1],
+		UnixFD(pipeIn[1]),
 		ReadWriteFD::ReadableDataCallback{},
 		ReadWriteFD::ReadableEofCallback{},
 		ReadWriteFD::ReadableErrorCallback{},

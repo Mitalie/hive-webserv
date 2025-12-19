@@ -26,6 +26,7 @@ SRCS := $(addprefix $(SRCDIR)/,\
 	Tokenizer.cpp \
 	CgiHandler.cpp \
 	CgiRequestHandler.cpp \
+	UnixFD.cpp \
 )
 
 # Project targets

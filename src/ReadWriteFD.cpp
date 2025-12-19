@@ -7,24 +7,23 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "Poll.hpp"
+#include "UnixFD.hpp"
 
 ReadWriteFD::ReadWriteFD(
-	int fd,
+	UnixFD &&fd,
 	ReadableDataCallback readCallback,
 	ReadableEofCallback readEofCallback,
 	ReadableErrorCallback readErrorCallback,
 	WritableDrainCallback writeCallback,
 	WritableErrorCallback writeErrorCallback)
-	: fd(fd),
+	: fd(std::move(fd)),
 	  readCallback(std::move(readCallback)),
 	  readEofCallback(std::move(readEofCallback)),
 	  readErrorCallback(std::move(readErrorCallback)),
 	  writeCallback(std::move(writeCallback)),
 	  writeErrorCallback(std::move(writeErrorCallback))
 {
-	Poll::addFd(
-		fd,
+	this->fd.addToPoll(
 		[this]()
 		{ onReadable(); },
 		[this]()
@@ -35,20 +34,16 @@ ReadWriteFD::ReadWriteFD(
 
 ReadWriteFD::~ReadWriteFD()
 {
-	Poll::removeFd(fd);
-	// RAII: Ensure the file descriptor is closed when the wrapper is destroyed.
-	if (fd >= 0)
-		close(fd);
 }
 
 void ReadWriteFD::startReading()
 {
-	Poll::setReadableInterest(fd, true);
+	fd.setReadableInterest(true);
 }
 
 void ReadWriteFD::stopReading()
 {
-	Poll::setReadableInterest(fd, false);
+	fd.setReadableInterest(false);
 }
 
 void ReadWriteFD::onReadable()
@@ -76,7 +71,7 @@ void ReadWriteFD::onReadable()
 size_t ReadWriteFD::queueWrite(std::span<const char> data)
 {
 	if (writeBuffer.empty() && data.size())
-		Poll::setWritableInterest(fd, true);
+		fd.setWritableInterest(true);
 	writeBuffer.insert(writeBuffer.end(), data.begin(), data.end());
 	return writeBuffer.size();
 }
@@ -98,7 +93,7 @@ void ReadWriteFD::onWritable()
 		writeCallback(writeBuffer.size());
 
 	if (writeBuffer.empty())
-		Poll::setWritableInterest(fd, false);
+		fd.setWritableInterest(false);
 }
 
 void ReadWriteFD::onError()

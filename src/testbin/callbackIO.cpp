@@ -12,6 +12,7 @@
 
 #include "Poll.hpp"
 #include "ReadWriteFD.hpp"
+#include "UnixFD.hpp"
 
 // Wrap read to emulate short reads
 static auto _read = (decltype(read) *)dlsym(RTLD_NEXT, "read");
@@ -37,7 +38,7 @@ int main()
 	// For input, just process whatever we receive
 	bool doneR = false;
 	ReadWriteFD in(
-		0,
+		UnixFD(0),
 		[&doneR, &in](std::span<const char> data)
 		{
 			std::cout << "\x1b[33mRead block of " << data.size() << " bytes: >\x1b[31m" << std::string_view(data.begin(), data.end()) << "\x1b[33m<\x1b[0m" << std::endl;
@@ -61,7 +62,7 @@ int main()
 	size_t outputPos = outputBufSize;
 	bool doneW = false;
 	ReadWriteFD out(
-		1,
+		UnixFD(1),
 		{},
 		{},
 		{},

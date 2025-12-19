@@ -90,7 +90,9 @@ struct ServerConfig
 	void handleClientMaxBodySize(class Tokenizer& tokenizer);
 };
 
-typedef std::map<HostPort, std::vector<ServerConfig>> PortServerMap;
+typedef std::vector<ServerConfig> ListenerConfig;
+
+typedef std::map<HostPort, ListenerConfig> PortServerMap;
 
 PortServerMap parseConfig(const std::string& filename);
 
