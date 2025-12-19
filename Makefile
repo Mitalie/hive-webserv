@@ -25,8 +25,15 @@ SRCS := $(addprefix $(SRCDIR)/,\
 	Config.cpp \
 	Tokenizer.cpp \
 	CgiHandler.cpp \
-	CgiRequestHandler.cpp \
 	UnixFD.cpp \
+	router.cpp \
+	FileRequestHandler.cpp \
+	ErrorRequestHandler.cpp \
+	RedirectRequestHandler.cpp \
+	UploadRequestHandler.cpp \
+	CgiRequestHandler.cpp \
+	AutoindexRequestHandler.cpp \
+	DeleteRequestHandler.cpp \
 )
 
 # Project targets

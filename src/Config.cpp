@@ -5,6 +5,7 @@
 #include <map> // std::map
 #include <fstream> // std::ifstream
 #include <stdexcept> // std::runtime_error
+#include <algorithm> // std::sort
 
 #include "Tokenizer.hpp"
 
@@ -42,6 +43,10 @@ ServerConfig::ServerConfig(Tokenizer& tokenizer)
 		if (t.type == TokenType::Eof)
 			throw std::runtime_error("ConfigParser: unexpected end of file in server block (missing closing brace)");
 		if (t.type == TokenType::Close) {
+			// Sort routes by descending path length for efficient matching
+			std::sort(routes.begin(), routes.end(), [](const RouteConfig& a, const RouteConfig& b) {
+				return a.path.length() > b.path.length();
+			});
 			return;
 		}
 		if (t.type != TokenType::String)

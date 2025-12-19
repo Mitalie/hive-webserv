@@ -83,6 +83,7 @@ struct ServerConfig
 	std::vector<std::string> serverNames;  // Server names (virtual hosts)
 	std::map<int, std::string> errorPages; // Error code to file path
 	size_t clientMaxBodySize;			   // Max body size in bytes
+	// All location blocks, sorted by descending path length for efficient prefix matching
 	std::vector<RouteConfig> routes;	   // All location blocks
 	void handleListen(class Tokenizer& tokenizer);
 	void handleServerName(class Tokenizer& tokenizer);
