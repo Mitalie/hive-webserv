@@ -172,7 +172,7 @@ void UploadRequestHandler::sendResponse(int code, const std::string& message) {
     std::string response =
         "HTTP/1.1 " + std::to_string(code) + " " + statusText + "\r\n"
         "Content-Type: text/plain\r\n"
-        "Content-Length: " + std::to_string(message.size()) + "\r\n"
-        "Connection: close\r\n\r\n" + message;
+        "Content-Length: " + std::to_string(message.size()) + "\r\n" +
+        manager_.connectionHeader() + "\r\n" + message;
     manager_.writeResponseData(response);
 }

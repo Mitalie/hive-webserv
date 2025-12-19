@@ -37,8 +37,8 @@ void FileRequestHandler::sendErrorResponse(int code, const std::string& message)
     std::string response =
         "HTTP/1.1 " + std::to_string(code) + " " + statusText + "\r\n"
         "Content-Type: text/plain\r\n"
-        "Content-Length: " + std::to_string(message.size()) + "\r\n"
-        "Connection: close\r\n\r\n" + message; // Body
+        "Content-Length: " + std::to_string(message.size()) + "\r\n" +
+        manager_.connectionHeader() + "\r\n" + message; // Body
     manager_.writeResponseData(response); // Send the response
     manager_.onRequestDone(); // Notify manager that request is done
 }
@@ -59,8 +59,8 @@ void FileRequestHandler::sendFile() {
     std::string response =
         "HTTP/1.1 200 OK\r\n"
         "Content-Type: application/octet-stream\r\n"
-        "Transfer-Encoding: chunked\r\n"
-        "Connection: close\r\n\r\n";
+        "Transfer-Encoding: chunked\r\n" +
+        manager_.connectionHeader() + "\r\n";
     manager_.writeResponseData(std::span<const char>(response.data(), response.size())); // Send headers
 
     constexpr size_t chunkSize = 8192; // 8KB

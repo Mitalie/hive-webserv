@@ -79,7 +79,7 @@ bool ErrorRequestHandler::tryServeCustomErrorPage() {
 		"HTTP/1.1 " + std::to_string(code_) + " " + statusText + "\r\n"
 		"Content-Type: text/html; charset=UTF-8\r\n"
 		"Content-Length: " + std::to_string(body.size()) + "\r\n"
-		"Connection: close\r\n\r\n" + body;
+		"\r\n" + body;
 	manager_.writeResponseData(response);
 	return true;
 }
@@ -91,7 +91,7 @@ void ErrorRequestHandler::sendDefaultResponse(const std::string& statusText) {
 		"HTTP/1.1 " + std::to_string(code_) + " " + statusText + "\r\n"
 		"Content-Type: text/html; charset=UTF-8\r\n"
 		"Content-Length: " + std::to_string(body.size()) + "\r\n"
-		"Connection: close\r\n\r\n" + body;
+		"\r\n" + body;
 	manager_.writeResponseData(response);
 }
 

@@ -59,8 +59,21 @@ void ClientHandler::onRequestError()
 	// TODO: abort connection
 }
 
+bool ClientHandler::shouldKeepAlive() const
+{
+	return keepAlive_;
+}
+
 void ClientHandler::createRequestHandler(RequestHeader &&header)
 {
+	// Determine keep-alive from Connection header
+	// HTTP/1.1 defaults to keep-alive unless "Connection: close" is sent
+	std::string connection = header.get("connection");
+	if (header.version() == "HTTP/1.1")
+		keepAlive_ = (connection.find("close") == std::string::npos);
+	else // HTTP/1.0 defaults to close
+		keepAlive_ = (connection.find("keep-alive") != std::string::npos);
+
 	// TODO: maybe process body length / mode within header parser?
 	std::string cl = header.get("content-length");
 	bodyLen = 0;

@@ -39,8 +39,8 @@ void AutoindexRequestHandler::generateDirectoryListing() {
         std::string response =
             "HTTP/1.1 404 Not Found\r\n"
             "Content-Type: text/plain\r\n"
-            "Content-Length: " + std::to_string(errorBody.size()) + "\r\n"
-            "Connection: close\r\n\r\n" + errorBody;
+            "Content-Length: " + std::to_string(errorBody.size()) + "\r\n" +
+            manager_.connectionHeader() + "\r\n" + errorBody;
         manager_.writeResponseData(response);
         manager_.onRequestDone();
         return;
@@ -53,8 +53,8 @@ void AutoindexRequestHandler::generateDirectoryListing() {
     std::string response =
         "HTTP/1.1 200 OK\r\n"
         "Content-Type: text/html; charset=utf-8\r\n"
-        "Content-Length: " + std::to_string(htmlBody.size()) + "\r\n"
-        "Connection: close\r\n\r\n" + htmlBody;
+        "Content-Length: " + std::to_string(htmlBody.size()) + "\r\n" +
+        manager_.connectionHeader() + "\r\n" + htmlBody;
     manager_.writeResponseData(response);
     manager_.onRequestDone();
 }

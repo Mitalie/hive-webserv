@@ -38,6 +38,7 @@ public:
 		gotError = true;
 	}
 	void setReadingBody(bool) override {}
+	bool shouldKeepAlive() const override { return false; }
 };
 
 void runIntegrationTest(const std::string &testName, const std::string &scriptFile, const std::string &expectedStatus)

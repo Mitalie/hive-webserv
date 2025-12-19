@@ -38,6 +38,7 @@ public:
 	virtual size_t writeResponseData(std::span<const char> data) override;
 	virtual void onRequestDone() override;
 	virtual void onRequestError() override;
+	virtual bool shouldKeepAlive() const override;
 
 private:
 	const ListenerConfig &config;
@@ -64,6 +65,7 @@ private:
 	bool requestDone = false;
 	bool readingPaused = false;
 	bool chunked = false;
+	bool keepAlive_ = true; // HTTP/1.1 defaults to keep-alive
 	size_t bodyLen = 0;
 	void createRequestHandler(RequestHeader &&header);
 	void handleDataBody();

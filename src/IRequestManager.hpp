@@ -1,6 +1,7 @@
 #pragma once
 
 #include <span>
+#include <string>
 
 /*
 	Abstract interface implemented by the request manager that allows a request
@@ -30,6 +31,22 @@ public:
 	virtual size_t writeResponseData(std::span<const char> data) = 0;
 
 	/*
+		Convenience overload for string data.
+	*/
+	size_t writeResponseData(const std::string &data)
+	{
+		return writeResponseData(std::span<const char>(data.data(), data.size()));
+	}
+
+	/*
+		Convenience overload for string literals.
+	*/
+	size_t writeResponseData(const char *data)
+	{
+		return writeResponseData(std::string(data));
+	}
+
+	/*
 		Report that the request handler has finished processing and has written
 		a valid response. The handler will be destroyed.
 	*/
@@ -41,4 +58,18 @@ public:
 		response or terminate the connection. The handler will be destroyed.
 	*/
 	virtual void onRequestError() = 0;
+
+	/*
+		Returns true if the connection should be kept alive after the response.
+		Handlers should use this to set the Connection header appropriately.
+	*/
+	virtual bool shouldKeepAlive() const = 0;
+
+	/*
+		Returns the appropriate Connection header value based on keep-alive state.
+	*/
+	std::string connectionHeader() const
+	{
+		return shouldKeepAlive() ? "Connection: keep-alive\r\n" : "Connection: close\r\n";
+	}
 };
