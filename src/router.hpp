@@ -15,10 +15,10 @@
 typedef std::unique_ptr<IRequestHandler> RequestHandlerPtr;
 
 /**
- * Main router function. Selects the appropriate server and route, then returns the correct handler.
+ * Main router function. Selects the appropriate route, then returns the correct handler.
  * @param manager The request manager.
  * @param header The HTTP request header object.
- * @param config The list of server configurations for the port.
+ * @param config The server configuration for the current request.
  * @return A pointer to the appropriate request handler.
  */
-RequestHandlerPtr router(IRequestManager& manager, const RequestHeader& header, const ListenerConfig& config);
+RequestHandlerPtr router(IRequestManager &manager, const RequestHeader &header, const ServerConfig &config);

@@ -64,7 +64,10 @@ private:
 	bool requestDone = false;
 	bool readingPaused = false;
 	bool chunked = false;
+	bool useBodyLenMax = false;
 	size_t bodyLen = 0;
+	size_t bodyLenMax = 0;
+	void checkAndRoute(RequestHeader &&header);
 	void createRequestHandler(RequestHeader &&header);
 	void handleDataBody();
 	void handleDataChunkHeader();

@@ -1,6 +1,7 @@
 #include "ClientHandler.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <cstddef>
 #include <memory>
 #include <optional>
@@ -10,9 +11,48 @@
 
 #include "CallbackQueue.hpp"
 #include "Config.hpp"
+#include "ErrorRequestHandler.hpp"
 #include "RequestHeader.hpp"
 #include "UnixFD.hpp"
 #include "router.hpp"
+
+/**
+ * Selects the appropriate ServerConfig for a request based on the Host header.
+ * If no match is found, returns the first server as default.
+ * Note: The port is stripped from the Host header before comparison, since
+ * serverNames typically don't include ports (per HTTP/1.1, Host can be "host:port").
+ * @return Reference to matching ServerConfig.
+ */
+static const ServerConfig &findServerConfig(const RequestHeader &header, const ListenerConfig &servers)
+{
+
+	std::string hostHeader = header.get("Host");
+	// Strip port from Host header if present (e.g., "example.com:8080" -> "example.com")
+	std::string::size_type colonPos = hostHeader.rfind(':');
+	if (colonPos != std::string::npos)
+	{
+		// Check if everything after the colon is numeric (i.e., it's a port, not part of IPv6)
+		bool isPort = true;
+		for (std::string::size_type i = colonPos + 1; i < hostHeader.size(); ++i)
+		{
+			if (!std::isdigit(static_cast<unsigned char>(hostHeader[i])))
+			{
+				isPort = false;
+				break;
+			}
+		}
+		if (isPort && colonPos + 1 < hostHeader.size())
+			hostHeader = hostHeader.substr(0, colonPos);
+	}
+	for (const auto &s : servers)
+	{
+		if (std::find(s.serverNames.begin(), s.serverNames.end(), hostHeader) != s.serverNames.end())
+			return s;
+	}
+	// If no match, return the first server as default
+	// There is always a first server, or we wouldn't be able to receive a request and get here
+	return servers[0];
+}
 
 ClientHandler::ClientHandler(const ListenerConfig &config, UnixFD &&fd)
 	: config(config),
@@ -59,6 +99,24 @@ void ClientHandler::onRequestError()
 	// TODO: abort connection
 }
 
+void ClientHandler::checkAndRoute(RequestHeader &&header)
+{
+	// Find the matching server config to get clientMaxBodySize
+	const ServerConfig &serverConfig = findServerConfig(header, config);
+	bodyLenMax = serverConfig.clientMaxBodySize;
+	useBodyLenMax = bodyLenMax > 0;
+
+	// Check Content-Length against maxBodySize before processing
+	if (useBodyLenMax && bodyLen > bodyLenMax)
+	{
+		request = std::make_unique<ErrorRequestHandler>(*this, header, serverConfig, 413);
+		return;
+	}
+
+	// Use router to select and create the appropriate handler
+	request = router(*this, header, serverConfig);
+}
+
 void ClientHandler::createRequestHandler(RequestHeader &&header)
 {
 	// TODO: maybe process body length / mode within header parser?
@@ -66,6 +124,7 @@ void ClientHandler::createRequestHandler(RequestHeader &&header)
 	bodyLen = 0;
 	if (!cl.empty())
 		bodyLen = std::stoull(cl);
+
 	std::string te = header.get("transfer-encoding");
 	if (!te.empty())
 	{
@@ -75,9 +134,9 @@ void ClientHandler::createRequestHandler(RequestHeader &&header)
 		if (te.find("chunked") != std::string::npos)
 			chunked = true;
 	}
+
 	requestDone = false;
-	// Use router to select and create the appropriate handler
-	request = router(*this, header, config);
+	checkAndRoute(std::move(header));
 	if (requestDone) // request completed during its construction
 		request = nullptr;
 }
@@ -97,15 +156,21 @@ void ClientHandler::handleDataChunkHeader()
 	if (chunkLen)
 	{
 		bodyLen = *chunkLen;
+
+		// Check if this chunk would exceed maxBodySize
+		if (useBodyLenMax && bodyLen > bodyLenMax)
+			onRequestError();
+		bodyLenMax -= bodyLen;
+
 		if (bodyLen == 0)
 		{
 			// End of chunked body
 			// TODO: parse and consume trailers
 			chunked = false;
-			
-		// 	// NEW: Signal handler that body is complete
-		// 	if (request)
-		// 		request->onBodyDone();
+
+			// 	// NEW: Signal handler that body is complete
+			// 	if (request)
+			// 		request->onBodyDone();
 		}
 	}
 }
@@ -113,9 +178,10 @@ void ClientHandler::handleDataChunkHeader()
 void ClientHandler::handleDataBody()
 {
 	size_t usableLen = std::min(bodyLen, availableData.size());
+
 	if (request)
 		request->onBodyData(availableData.subspan(0, usableLen));
-	
+
 	// If there is no current handler, the previous one completed without
 	// waiting for entire body. Consume the body bytes either way.
 	availableData = availableData.subspan(usableLen);
