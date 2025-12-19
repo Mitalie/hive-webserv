@@ -165,7 +165,6 @@ void ClientHandler::handleDataChunkHeader()
 		if (bodyLen == 0)
 		{
 			// End of chunked body
-			// TODO: parse and consume trailers
 			chunked = false;
 
 			// 	// NEW: Signal handler that body is complete
