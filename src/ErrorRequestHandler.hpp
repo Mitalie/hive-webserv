@@ -1,21 +1,33 @@
 #pragma once
 
-#include "IRequestHandler.hpp"
-#include "IRequestManager.hpp"
-#include "RequestHeader.hpp"
 #include <string>
 #include <span>
 #include <cstddef>
+#include <map>
+
+#include "Config.hpp"
+#include "IRequestHandler.hpp"
+#include "IRequestManager.hpp"
+#include "RequestHeader.hpp"
 
 class ErrorRequestHandler : public IRequestHandler {
 public:
-    ErrorRequestHandler(IRequestManager& manager, const RequestHeader& header, int code);
-    virtual ~ErrorRequestHandler();
-    void onBodyData(std::span<const char> data) override;
-    void notifyResponseBuffer(size_t bufferSize) override;
+	ErrorRequestHandler(
+		IRequestManager& manager,
+		const RequestHeader& header,
+		const ServerConfig& config,
+		int code);
+	virtual ~ErrorRequestHandler();
+	void onBodyData(std::span<const char> data) override;
+	void notifyResponseBuffer(size_t bufferSize) override;
+
 private:
-    IRequestManager& manager_;
-    RequestHeader header_;
-    int code_;
-    void sendResponse();
+	IRequestManager& manager_;
+	const RequestHeader& header_;
+	const ServerConfig& config_;
+	int code_;
+	void sendResponse();
+	void sendDefaultResponse(const std::string& statusText);
+	bool tryServeCustomErrorPage();
+	std::string getStatusText() const;
 };
