@@ -30,7 +30,7 @@ public:
 	ClientHandler(const ListenerConfig &config, UnixFD &&fd);
 	ClientHandler(const ClientHandler &other) = delete;
 	ClientHandler &operator=(const ClientHandler &other) = delete;
-	~ClientHandler();
+	virtual ~ClientHandler();
 
 	/* IRequestManager functions */
 
@@ -65,6 +65,7 @@ private:
 	bool readingPaused = false;
 	bool chunked = false;
 	bool useBodyLenMax = false;
+	bool terminating = false;
 	size_t bodyLen = 0;
 	size_t bodyLenMax = 0;
 	void checkAndRoute(RequestHeader &&header);

@@ -96,7 +96,12 @@ void ClientHandler::onRequestDone()
 
 void ClientHandler::onRequestError()
 {
-	// TODO: abort connection
+	// Destruct request handler already to prevent it from accessing ClientHandler
+	request = nullptr;
+	requestDone = true;
+	// Set a flag to break out of loops and skip unnecessary work
+	// ClientHandler will be destructed once we're sure there's nothing trying to access it
+	terminating = true;
 }
 
 void ClientHandler::checkAndRoute(RequestHeader &&header)
@@ -159,7 +164,7 @@ void ClientHandler::handleDataChunkHeader()
 
 		// Check if this chunk would exceed maxBodySize
 		if (useBodyLenMax && bodyLen > bodyLenMax)
-			onRequestError();
+			return onRequestError();
 		bodyLenMax -= bodyLen;
 
 		if (bodyLen == 0)
@@ -195,7 +200,7 @@ void ClientHandler::handleDataBody()
 
 void ClientHandler::handleData()
 {
-	while (!availableData.empty() && !readingPaused)
+	while (!availableData.empty() && !readingPaused && !terminating)
 	{
 		if (bodyLen)
 			// Next byte(s) are body data
@@ -215,7 +220,15 @@ void ClientHandler::processData()
 	processingData = true;
 	handleData();
 	processingData = false;
-	updateWakeup();
+	if (terminating)
+		// It's now safe to queue destruction. Queue will be processed before we poll FDs again.
+		CallbackQueue::queueCallback(
+			[this]()
+			{
+				delete this;
+			});
+	else
+		updateWakeup();
 }
 
 void ClientHandler::socketReadCallback(std::span<const char> newData)
@@ -223,7 +236,7 @@ void ClientHandler::socketReadCallback(std::span<const char> newData)
 	// Use read buffer directly to avoid unnecessary copying
 	availableData = newData;
 	processData();
-	if (!availableData.empty())
+	if (!availableData.empty() && !terminating)
 	{
 		// Read not fully consumed, store in buffer
 		leftoverData.assign(availableData.begin(), availableData.end());
@@ -235,7 +248,7 @@ void ClientHandler::bufferedDataCallback()
 {
 	bufferedDataCallbackPending = false;
 	processData();
-	if (availableData.empty())
+	if (availableData.empty() && !terminating)
 		// Buffer fully consumed
 		leftoverData.clear();
 }
