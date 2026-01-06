@@ -7,6 +7,8 @@
 #include <sys/poll.h>
 #include <unistd.h>
 
+#include "AbortWorkException.hpp"
+
 // Singleton instance
 Poll Poll::instance;
 
@@ -52,37 +54,45 @@ void Poll::doPoll(int timeout)
 	fdsIdx = 0;
 	while (fdsIdx < numFds)
 	{
-		pollfd &current = fds[fdsIdx++];
+		try
+		{
+			pollfd &current = fds[fdsIdx++];
 
-		// Ensure the FD is still registered (it might have been by callbacks in previous iterations)
-		auto it = instance.fdMap.find(current.fd);
-		if (it == instance.fdMap.end())
-			continue;
+			// Ensure the FD is still registered (it might have been by callbacks in previous iterations)
+			auto it = instance.fdMap.find(current.fd);
+			if (it == instance.fdMap.end())
+				continue;
 
-		// 1. Handle Errors
-		if (current.revents & POLLERR)
-			if (it->second.error)
-				it->second.error();
+			// 1. Handle Errors
+			if (current.revents & POLLERR)
+				if (it->second.error)
+					it->second.error();
 
-		// Check FD again after callback
-		it = instance.fdMap.find(current.fd);
-		if (it == instance.fdMap.end())
-			continue;
+			// Check FD again after callback
+			it = instance.fdMap.find(current.fd);
+			if (it == instance.fdMap.end())
+				continue;
 
-		// 2. Handle Read (or Hangup)
-		if (current.revents & (POLLIN | POLLHUP))
-			if (it->second.readable)
-				it->second.readable();
+			// 2. Handle Read (or Hangup)
+			if (current.revents & (POLLIN | POLLHUP))
+				if (it->second.readable)
+					it->second.readable();
 
-		// Check FD again after callback
-		it = instance.fdMap.find(current.fd);
-		if (it == instance.fdMap.end())
-			continue;
+			// Check FD again after callback
+			it = instance.fdMap.find(current.fd);
+			if (it == instance.fdMap.end())
+				continue;
 
-		// 3. Handle Write
-		if (current.revents & POLLOUT)
-			if (it->second.writable)
-				it->second.writable();
+			// 3. Handle Write
+			if (current.revents & POLLOUT)
+				if (it->second.writable)
+					it->second.writable();
+		}
+		catch (const AbortWorkException &e)
+		{
+			// Do nothing but stop exception propagation. Derived classes of AbortWorkException
+			// may perform additional cleanup in their destructor.
+		}
 	}
 }
 

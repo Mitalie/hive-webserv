@@ -5,6 +5,7 @@
 #include <span>
 #include <vector>
 
+#include "AbortWorkException.hpp"
 #include "ChunkHeaderReader.hpp"
 #include "Config.hpp"
 #include "RequestHeaderReader.hpp"
@@ -54,6 +55,7 @@ private:
 	void bufferedDataCallback();
 	void socketWriteCallback(size_t bufferSize);
 	void updateWakeup();
+	void setupMainLoopCallback();
 
 	/* Incoming data processing */
 
@@ -65,7 +67,6 @@ private:
 	bool readingPaused = false;
 	bool chunked = false;
 	bool useBodyLenMax = false;
-	bool terminating = false;
 	size_t bodyLen = 0;
 	size_t bodyLenMax = 0;
 	void checkAndRoute(RequestHeader &&header);
@@ -74,4 +75,14 @@ private:
 	void handleDataChunkHeader();
 	void handleDataRequestHeader();
 	void handleData();
+
+	class TerminateClientException : public AbortWorkException
+	{
+	public:
+		TerminateClientException(ClientHandler *handler);
+		virtual ~TerminateClientException();
+
+	private:
+		ClientHandler *handler;
+	};
 };

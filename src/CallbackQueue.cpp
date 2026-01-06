@@ -2,6 +2,8 @@
 
 #include <cstddef>
 
+#include "AbortWorkException.hpp"
+
 // Singleton instance
 CallbackQueue CallbackQueue::instance;
 
@@ -18,6 +20,16 @@ void CallbackQueue::handleQueue()
 		Keep iterating until there are no more entries and then clear the queue.
 	*/
 	for (size_t i = 0; i < instance.queue.size(); ++i)
-		instance.queue[i]();
+	{
+		try
+		{
+			instance.queue[i]();
+		}
+		catch (const AbortWorkException &e)
+		{
+			// Do nothing but stop exception propagation. Derived classes of AbortWorkException
+			// may perform additional cleanup in their destructor.
+		}
+	}
 	instance.queue.clear();
 }
