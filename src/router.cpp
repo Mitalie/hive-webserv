@@ -29,7 +29,7 @@
  * @param path The request path (may include query string).
  * @return The path without query string.
  */
-std::string stripQueryString(const std::string& path)
+std::string stripQueryString(const std::string &path)
 {
 	size_t pos = path.find('?');
 	if (pos != std::string::npos)
@@ -47,7 +47,7 @@ std::string stripQueryString(const std::string& path)
  * @param root The root directory that the path must stay within.
  * @return True if path is within root, false otherwise.
  */
-bool isPathWithinRoot(const std::filesystem::path& resolvedPath, const std::filesystem::path& root)
+bool isPathWithinRoot(const std::filesystem::path &resolvedPath, const std::filesystem::path &root)
 {
 	// Get canonical forms for comparison
 	std::filesystem::path canonicalRoot = std::filesystem::weakly_canonical(root);
@@ -73,7 +73,8 @@ bool isPathWithinRoot(const std::filesystem::path& resolvedPath, const std::file
 /**
  * Checks if the HTTP method is allowed for the given route.
  */
-bool isMethodAllowed(const std::string& method, const std::vector<std::string>& allowedMethods) {
+bool isMethodAllowed(const std::string &method, const std::vector<std::string> &allowedMethods)
+{
 	return std::find(allowedMethods.begin(), allowedMethods.end(), method) != allowedMethods.end();
 }
 
@@ -83,11 +84,14 @@ bool isMethodAllowed(const std::string& method, const std::vector<std::string>& 
 /**
  * Determines if the request path matches any configured CGI extension.
  */
-bool isCgiRequest(const std::string& path, const std::map<std::string, std::string>& cgiInterpreters) {
+bool isCgiRequest(const std::string &path, const std::map<std::string, std::string> &cgiInterpreters)
+{
 	// Check if path ends with any CGI extension
-	for (const auto& pair : cgiInterpreters) {
-		const std::string& ext = pair.first;
-		if (path.size() >= ext.size() && path.compare(path.size() - ext.size(), ext.size(), ext) == 0) {
+	for (const auto &pair : cgiInterpreters)
+	{
+		const std::string &ext = pair.first;
+		if (path.size() >= ext.size() && path.compare(path.size() - ext.size(), ext.size(), ext) == 0)
+		{
 			return true;
 		}
 	}
@@ -102,10 +106,10 @@ bool isCgiRequest(const std::string& path, const std::map<std::string, std::stri
  * Checks method, redirect, CGI, upload, and file serving in order.
  */
 std::unique_ptr<IRequestHandler> handleRequestForRoute(
-	IRequestManager& manager,
-	const RequestHeader& header,
-	const ServerConfig& server,
-	const RouteConfig& route)
+	IRequestManager &manager,
+	const RequestHeader &header,
+	const ServerConfig &server,
+	const RouteConfig &route)
 {
 	// 1. Check if method is allowed for this route
 	if (!isMethodAllowed(header.method(), route.allowedMethods))
@@ -120,7 +124,8 @@ std::unique_ptr<IRequestHandler> handleRequestForRoute(
 	// even if uploadStore is configured. To upload a CGI script, use a different route.
 	// Strip query string for filesystem operations (CGI handler will parse QUERY_STRING from original path)
 	std::string cleanPath = stripQueryString(header.path());
-	if (isCgiRequest(cleanPath, route.cgiInterpreters)) {
+	if (isCgiRequest(cleanPath, route.cgiInterpreters))
+	{
 		// Verify the CGI script exists before routing to CgiRequestHandler
 		std::string cgiRelativePath = cleanPath.substr(route.path.length());
 		if (cgiRelativePath.empty() || cgiRelativePath[0] != '/')
@@ -142,7 +147,8 @@ std::unique_ptr<IRequestHandler> handleRequestForRoute(
 		return std::make_unique<UploadRequestHandler>(manager, header, route);
 
 	// 5. Handle DELETE method
-	if (header.method() == "DELETE") {
+	if (header.method() == "DELETE")
+	{
 		// Build and validate path for DELETE
 		std::string deleteRelativePath = cleanPath.substr(route.path.length());
 		if (deleteRelativePath.empty() || deleteRelativePath[0] != '/')
@@ -171,50 +177,60 @@ std::unique_ptr<IRequestHandler> handleRequestForRoute(
 		return std::make_unique<ErrorRequestHandler>(manager, header, server, 403); // Forbidden - path traversal attempt
 
 	// Check if path is a directory
-	if (std::filesystem::exists(path) && std::filesystem::is_directory(path)) {
+	if (std::filesystem::exists(path) && std::filesystem::is_directory(path))
+	{
 		// Try to serve the index file if configured
-		if (!route.index.empty()) {
+		if (!route.index.empty())
+		{
 			std::filesystem::path indexPath = path / route.index;
-			if (std::filesystem::exists(indexPath) && std::filesystem::is_regular_file(indexPath)) {
+			if (std::filesystem::exists(indexPath) && std::filesystem::is_regular_file(indexPath))
+			{
 				// Index file exists, update path to serve it
 				path = indexPath;
 				filePath = indexPath.string();
 			}
-			else if (route.autoindex) {
+			else if (route.autoindex)
+			{
 				// Index file doesn't exist but autoindex is enabled
 				return std::make_unique<AutoindexRequestHandler>(manager, header, route);
 			}
-			else {
+			else
+			{
 				// No index file and autoindex disabled
 				return std::make_unique<ErrorRequestHandler>(manager, header, server, 403); // Forbidden
 			}
 		}
-		else if (route.autoindex) {
+		else if (route.autoindex)
+		{
 			// No index configured but autoindex is enabled
 			return std::make_unique<AutoindexRequestHandler>(manager, header, route);
 		}
-		else {
+		else
+		{
 			// Directory request with no index and no autoindex
 			return std::make_unique<ErrorRequestHandler>(manager, header, server, 403); // Forbidden
 		}
 	}
 
-	if (!std::filesystem::exists(path)) {
+	if (!std::filesystem::exists(path))
+	{
 		// File does not exist
 		return std::make_unique<ErrorRequestHandler>(manager, header, server, 404); // Not Found
 	}
-	if (!std::filesystem::is_regular_file(path)) {
+	if (!std::filesystem::is_regular_file(path))
+	{
 		// Not a regular file (e.g., symlink, device, etc.)
 		return std::make_unique<ErrorRequestHandler>(manager, header, server, 403); // Forbidden
 	}
 	auto perms = std::filesystem::status(path).permissions();
 	if ((perms & std::filesystem::perms::owner_read) == std::filesystem::perms::none &&
 		(perms & std::filesystem::perms::group_read) == std::filesystem::perms::none &&
-		(perms & std::filesystem::perms::others_read) == std::filesystem::perms::none) {
+		(perms & std::filesystem::perms::others_read) == std::filesystem::perms::none)
+	{
 		// No read permission
 		return std::make_unique<ErrorRequestHandler>(manager, header, server, 403); // Forbidden
 	}
-	return std::make_unique<FileRequestHandler>(manager, header, route);
+	return std::make_unique<FileRequestHandler>(manager, path.c_str());
 }
 
 // =========================
@@ -223,17 +239,19 @@ std::unique_ptr<IRequestHandler> handleRequestForRoute(
 /**
  * Main router function. Finds the matching server and route, then delegates to the appropriate handler.
  */
-std::unique_ptr<IRequestHandler> router(IRequestManager& manager, const RequestHeader& header, const ServerConfig& server)
+std::unique_ptr<IRequestHandler> router(IRequestManager &manager, const RequestHeader &header, const ServerConfig &server)
 {
 	// Find the matching route (by request path prefix)
 	// Assumes server.routes is sorted by descending path length
 	// Strip query string for route matching
 	const std::string requestPath = stripQueryString(header.path());
-	for (const RouteConfig& route : server.routes) {
-		const std::string& routePath = route.path;
+	for (const RouteConfig &route : server.routes)
+	{
+		const std::string &routePath = route.path;
 		if (requestPath.compare(0, routePath.size(), routePath) == 0 &&
 			(requestPath.size() == routePath.size() ||
-				(requestPath.size() > routePath.size() && requestPath[routePath.size()] == '/'))) {
+			 (requestPath.size() > routePath.size() && requestPath[routePath.size()] == '/')))
+		{
 			return handleRequestForRoute(manager, header, server, route);
 		}
 	}

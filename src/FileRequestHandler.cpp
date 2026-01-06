@@ -1,88 +1,107 @@
-
 #include "FileRequestHandler.hpp"
-#include "IRequestManager.hpp"
-#include "RequestHeader.hpp"
-#include "Config.hpp"
-#include "CallbackQueue.hpp"
+
 #include <cstddef>
 #include <span>
-#include <ios>
 #include <string>
-#include <vector>
-#include <fstream>
-#include <sstream>
 
-FileRequestHandler::FileRequestHandler(IRequestManager& manager, const RequestHeader& header, const RouteConfig& route)
-    : manager_(manager), header_(header), route_(route) {
-    filePath_ = route_.root + header_.path();
-    // Queue callback to do file serving work from main loop
-    // This avoids deep call stacks and allows proper async handling
-    CallbackQueue::queueCallback([this]() { sendFile(); });
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <errno.h>
+
+#include "IRequestManager.hpp"
+
+FileRequestHandler::FileRequestHandler(IRequestManager &manager, const char *filePath)
+	: manager_(manager)
+{
+	start(filePath);
 }
 
-FileRequestHandler::~FileRequestHandler() {
-    if (inFile_.is_open()) inFile_.close();
+FileRequestHandler::~FileRequestHandler()
+{
+	if (fd_ != -1)
+		close(fd_);
 }
 
-void FileRequestHandler::onBodyData(std::span<const char> /*data*/) {
-    // Ignore body data for GET
+void FileRequestHandler::onBodyData(std::span<const char> /*data*/)
+{
+	// Ignore body data for GET
 }
 
-void FileRequestHandler::notifyResponseBuffer(size_t /*bufferSize*/) {
-    // No buffering logic for file serving
+void FileRequestHandler::notifyResponseBuffer(size_t bufferSize)
+{
+	// Resume bulk file sending when buffer is available
+	if (bufferSize < BUFFER_LIMIT - CHUNK_SIZE)
+		sendData();
 }
 
-void FileRequestHandler::sendErrorResponse(int code, const std::string& message) {
-    std::string statusText = (code == 200) ? "OK" : "Error"; // Simplified for brevity
-    std::string response =
-        "HTTP/1.1 " + std::to_string(code) + " " + statusText + "\r\n"
-        "Content-Type: text/plain\r\n"
-        "Content-Length: " + std::to_string(message.size()) + "\r\n"
-        "Connection: close\r\n\r\n" + message; // Body
-    manager_.writeResponseData(response); // Send the response
-    manager_.onRequestDone(); // Notify manager that request is done
+void FileRequestHandler::sendErrorResponse(int code, const std::string &message)
+{
+	std::string statusText = (code == 200) ? "OK" : "Error";
+	std::string header =
+		"HTTP/1.1 " + std::to_string(code) + " " + statusText +
+		"\r\n"
+		"Content-Type: text/plain\r\n"
+		"Content-Length: " +
+		std::to_string(message.size()) +
+		"\r\n\r\n" +
+		message;
+	manager_.writeResponseData(std::span<const char>(header.data(), header.size()));
+	manager_.onRequestDone();
 }
 
-/*
-    - Uses a std::stringstream to format the chunk size in hexadecimal, which is the correct and portable way to do it in C++.
-    - The file is read and sent in 8KB chunks, each chunk is properly formatted for HTTP chunked transfer encoding.
-    - The final zero-length chunk is sent to signal the end of the response.
-*/
-void FileRequestHandler::sendFile() {
-    inFile_.open(filePath_, std::ios::binary); // Open file in binary mode
-    if (!inFile_) {
-        sendErrorResponse(404, "File not found"); // File could not be opened
-        return;
-    }
-
-    // Use chunked transfer encoding for streaming
-    std::string response =
-        "HTTP/1.1 200 OK\r\n"
-        "Content-Type: application/octet-stream\r\n"
-        "Transfer-Encoding: chunked\r\n"
-        "Connection: close\r\n\r\n";
-    manager_.writeResponseData(std::span<const char>(response.data(), response.size())); // Send headers
-
-    constexpr size_t chunkSize = 8192; // 8KB
-    std::vector<char> buffer(chunkSize); // Buffer for file chunks
-    while (inFile_) {
-        inFile_.read(buffer.data(), chunkSize); // Read a chunk
-        std::streamsize bytesRead = inFile_.gcount();// Get number of bytes read
-        if (bytesRead <= 0) break; // End of file or read error
-        // Write chunk size in hex followed by CRLF
-        std::stringstream ss;   // String stream for formatting
-        ss << std::hex << bytesRead << "\r\n"; // Chunk size line
-        std::string chunkHeader = ss.str(); // Convert to string
-        manager_.writeResponseData(std::span<const char>(chunkHeader.data(), chunkHeader.size())); // Send chunk size
-        // Write chunk data
-        manager_.writeResponseData(std::span<const char>(buffer.data(), bytesRead)); // Send chunk data
-        // Write CRLF after chunk
-        std::string crlf = "\r\n"; // CRLF after chunk data
-        manager_.writeResponseData(std::span<const char>(crlf.data(), crlf.size())); // Send CRLF
-    }
-    // Write final zero-length chunk
-    std::string lastChunk = "0\r\n\r\n"; // Last chunk indicating end of response
-    manager_.writeResponseData(std::span<const char>(lastChunk.data(), lastChunk.size())); // Send last chunk
-    manager_.onRequestDone(); // Notify manager that request is done
+void FileRequestHandler::start(const char *filePath)
+{
+	fd_ = open(filePath, O_RDONLY);
+	if (fd_ == -1)
+	{
+		if (errno == ENOENT)
+			sendErrorResponse(404, "File not found");
+		else
+			sendErrorResponse(500, "Could not open file");
+		return;
+	}
+	struct stat st;
+	// Should use fstat here to prevent rename race condition, but assignment doesn't allow it...
+	if (stat(filePath, &st) == -1)
+	{
+		sendErrorResponse(500, "Could not stat file");
+		return;
+	}
+	bytesRemaining_ = st.st_size;
+	std::string header =
+		"HTTP/1.1 200 OK\r\n"
+		"Content-Type: application/octet-stream\r\n"
+		"Content-Length: " +
+		std::to_string(st.st_size) +
+		"\r\n\r\n";
+	manager_.writeResponseData(header);
+	sendData();
 }
 
+void FileRequestHandler::sendData()
+{
+	if (fd_ == -1)
+		return;
+	char readBuffer[CHUNK_SIZE];
+
+	while (bytesRemaining_)
+	{
+		ssize_t result = read(fd_, readBuffer, CHUNK_SIZE);
+		if (result <= 0)
+			// error or unexpected EOF - we may have sent data already so trash the connection
+			return manager_.onRequestError();
+		size_t bytesRead = result;
+		if (bytesRead > bytesRemaining_)
+			// race condition - file grew, we limit to size we sent in C-L header
+			bytesRead = bytesRemaining_;
+		bytesRemaining_ -= bytesRead;
+		size_t bufferSize = manager_.writeResponseData(std::span(readBuffer, bytesRead));
+		if (bytesRemaining_ == 0)
+			return manager_.onRequestDone();
+		if (bufferSize >= BUFFER_LIMIT)
+			// buffer full, wait for notifyResponseBuffer
+			return;
+	}
+}
