@@ -179,6 +179,9 @@ std::unique_ptr<IRequestHandler> handleRequestForRoute(
 	// Check if path is a directory
 	if (std::filesystem::exists(path) && std::filesystem::is_directory(path))
 	{
+		if (cleanPath.back() != '/')
+			return std::make_unique<RedirectRequestHandler>(manager, header, cleanPath + '/', 301);
+
 		// Try to serve the index file if configured
 		if (!route.index.empty())
 		{
@@ -248,12 +251,13 @@ std::unique_ptr<IRequestHandler> router(IRequestManager &manager, const RequestH
 	for (const RouteConfig &route : server.routes)
 	{
 		const std::string &routePath = route.path;
-		if (requestPath.compare(0, routePath.size(), routePath) == 0 &&
-			(requestPath.size() == routePath.size() ||
-			 (requestPath.size() > routePath.size() && requestPath[routePath.size()] == '/')))
-		{
+		if (requestPath.compare(0, routePath.size(), routePath) != 0)
+			// request is not under this route
+			continue;
+		if (requestPath.size() == routePath.size() ||
+			(route.isDirectoryRoute && requestPath[routePath.size()] == '/'))
+			// either exact match, or match up to slash in request URL
 			return handleRequestForRoute(manager, header, server, route);
-		}
 	}
 	// No matching route found: return 404 handler
 	return std::make_unique<ErrorRequestHandler>(manager, header, server, 404);
