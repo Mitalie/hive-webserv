@@ -160,7 +160,7 @@ std::unique_ptr<IRequestHandler> handleRequestForRoute(
 		if (!isPathWithinRoot(deletePath, route.root))
 			return std::make_unique<ErrorRequestHandler>(manager, header, server, 403); // Forbidden - path traversal attempt
 
-		return std::make_unique<DeleteRequestHandler>(manager, header, route);
+		return std::make_unique<DeleteRequestHandler>(manager, deletePath.c_str());
 	}
 
 	// 6. Default: serve static file
@@ -192,7 +192,7 @@ std::unique_ptr<IRequestHandler> handleRequestForRoute(
 			else if (route.autoindex)
 			{
 				// Index file doesn't exist but autoindex is enabled
-				return std::make_unique<AutoindexRequestHandler>(manager, header, route);
+				return std::make_unique<AutoindexRequestHandler>(manager, path, header.path(), relativePath != "/");
 			}
 			else
 			{
@@ -203,7 +203,7 @@ std::unique_ptr<IRequestHandler> handleRequestForRoute(
 		else if (route.autoindex)
 		{
 			// No index configured but autoindex is enabled
-			return std::make_unique<AutoindexRequestHandler>(manager, header, route);
+			return std::make_unique<AutoindexRequestHandler>(manager, path, header.path(), relativePath != "/");
 		}
 		else
 		{
