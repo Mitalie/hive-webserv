@@ -43,6 +43,10 @@ Listener::Listener(const HostPort &hostport, const ListenerConfig &config)
 	fd = UnixFD(socket(gaiRes->ai_family, gaiRes->ai_socktype, gaiRes->ai_protocol));
 	if (fd < 0)
 		throw std::runtime_error(std::string("socket: ") + strerror(errno));
+	int value = 1;
+	int ssoErr = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &value, sizeof(value));
+	if (ssoErr)
+		throw std::runtime_error(std::string("setsockopt(SO_REUSEADDR): ") + strerror(errno));
 	int bindErr = bind(fd, gaiRes->ai_addr, gaiRes->ai_addrlen);
 	if (bindErr)
 		throw std::runtime_error(std::string("bind: ") + strerror(errno));
