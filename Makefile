@@ -16,7 +16,6 @@ SRCS := $(addprefix $(SRCDIR)/,\
 	CallbackQueue.cpp \
 	ChunkHeaderReader.cpp \
 	ClientHandler.cpp \
-	DummyRequestHandler.cpp \
 	RequestHeader.cpp \
 	HeaderFields.cpp \
 	RequestHeaderReader.cpp \
