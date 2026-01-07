@@ -7,9 +7,17 @@
 // Singleton instance
 CallbackQueue CallbackQueue::instance;
 
-void CallbackQueue::queueCallback(Callback cb)
+void CallbackQueue::CallbackOwner::queueCallback(Callback cb)
 {
-	instance.queue.push_back(cb);
+	instance.queue.push_back({this, cb});
+}
+
+CallbackQueue::CallbackOwner::~CallbackOwner()
+{
+	std::erase_if(
+		instance.queue,
+		[this](CallbackEntry entry)
+		{ return entry.owner == this; });
 }
 
 void CallbackQueue::handleQueue()
@@ -23,7 +31,7 @@ void CallbackQueue::handleQueue()
 	{
 		try
 		{
-			instance.queue[i]();
+			instance.queue[i].cb();
 		}
 		catch (const AbortWorkException &e)
 		{

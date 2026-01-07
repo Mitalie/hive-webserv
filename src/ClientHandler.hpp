@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "AbortWorkException.hpp"
+#include "CallbackQueue.hpp"
 #include "ChunkHeaderReader.hpp"
 #include "Config.hpp"
 #include "RequestHeaderReader.hpp"
@@ -42,6 +43,7 @@ public:
 
 private:
 	const ListenerConfig &config;
+	CallbackQueue::CallbackOwner cbOwner;
 
 	/* IO handling and buffering */
 
