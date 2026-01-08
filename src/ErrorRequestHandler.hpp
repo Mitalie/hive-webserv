@@ -18,8 +18,9 @@ public:
 		const RequestHeader &header,
 		const ServerConfig &config,
 		int code);
-	virtual ~ErrorRequestHandler();
+	~ErrorRequestHandler();
 	void onBodyData(std::span<const char> data) override;
+	void onBodyDone() override;
 	void notifyResponseBuffer(size_t bufferSize) override;
 
 private:

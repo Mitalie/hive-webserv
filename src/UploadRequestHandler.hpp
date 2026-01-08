@@ -14,8 +14,9 @@ class UploadRequestHandler : public IRequestHandler
 {
 public:
 	UploadRequestHandler(IRequestManager &manager, const RequestHeader &header, const RouteConfig &route);
-	virtual ~UploadRequestHandler();
+	~UploadRequestHandler();
 	void onBodyData(std::span<const char> data) override;
+	void onBodyDone() override;
 	void notifyResponseBuffer(size_t bufferSize) override;
 
 private:

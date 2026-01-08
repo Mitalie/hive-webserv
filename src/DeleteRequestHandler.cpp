@@ -22,6 +22,11 @@ void DeleteRequestHandler::onBodyData(std::span<const char> /*data*/)
 	// DELETE requests typically don't have a body, ignore any data
 }
 
+void DeleteRequestHandler::onBodyDone()
+{
+	// No body to handle for DELETE
+}
+
 void DeleteRequestHandler::notifyResponseBuffer(size_t /*bufferSize*/)
 {
 	// No buffering logic needed for DELETE

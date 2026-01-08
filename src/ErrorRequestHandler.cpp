@@ -31,6 +31,11 @@ void ErrorRequestHandler::onBodyData(std::span<const char> /*data*/)
 	// Ignore body data for errors
 }
 
+void ErrorRequestHandler::onBodyDone()
+{
+	// No body to handle for errors
+}
+
 void ErrorRequestHandler::notifyResponseBuffer(size_t /*bufferSize*/)
 {
 	// No buffering logic needed for error

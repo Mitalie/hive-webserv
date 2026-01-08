@@ -183,6 +183,26 @@ void UploadRequestHandler::onBodyData(std::span<const char> data)
 	}
 }
 
+void UploadRequestHandler::onBodyDone()
+{
+	// If done_ is false, it means the stream ended (or content length was reached)
+	// but we never found the multipart boundary. The upload is incomplete/corrupt.
+	if (!done_)
+	{
+		// 1. Close the file if open
+		if (outFile_.is_open())
+			outFile_.close();
+
+		// 2. Delete the partial/corrupt file
+		std::filesystem::remove(targetPath_);
+
+		// 3. Send error and mark done
+		sendResponse(400, "Bad Request: Incomplete multipart body");
+		manager_.onRequestDone();
+		done_ = true;
+	}
+}
+
 void UploadRequestHandler::notifyResponseBuffer(size_t /*bufferSize*/)
 {
 	// No buffering logic for upload
