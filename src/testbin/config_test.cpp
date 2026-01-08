@@ -1,8 +1,9 @@
-#include "../Config.hpp"
-#include <iostream>
 #include <cstddef>	 // size_t
 #include <exception> // std::runtime_error
+#include <iostream>
 #include <map>		 // std::map
+
+#include "Config.hpp"
 
 int main()
 {

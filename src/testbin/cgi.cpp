@@ -1,11 +1,12 @@
-#include <exception>
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <unistd.h>
-#include <vector>
-#include <span>
 #include <cstdlib> // For getenv
+#include <exception>
+#include <fstream>
+#include <iostream>
+#include <span>
+#include <string>
+#include <vector>
+
+#include <unistd.h>
 
 #include "CgiHandler.hpp"
 #include "Poll.hpp"

@@ -1,7 +1,8 @@
 #pragma once
-#include <string>
+
 #include <istream>
 #include <stdexcept>
+#include <string>
 
 enum class TokenType
 {

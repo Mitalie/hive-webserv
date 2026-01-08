@@ -1,13 +1,14 @@
 #pragma once
 
+#include <cstddef>
+#include <filesystem>
+#include <span>
+#include <string>
+
+#include "Config.hpp"
 #include "IRequestHandler.hpp"
 #include "IRequestManager.hpp"
 #include "RequestHeader.hpp"
-#include "Config.hpp"
-#include <string>
-#include <span>
-#include <cstddef>
-#include <filesystem>
 
 /**
  * Request handler that generates an HTML directory listing (autoindex).

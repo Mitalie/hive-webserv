@@ -1,3 +1,5 @@
+#include "HeaderFields.hpp"
+
 #include <algorithm>
 #include <cctype>
 #include <cstddef>
@@ -6,7 +8,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
-#include "HeaderFields.hpp"
+
 #include "Utils.hpp"
 
 std::string HeaderFields::toLower(std::string s)

@@ -1,9 +1,10 @@
 #pragma once
 
+#include <string>
+
 #include "IRequestHandler.hpp"
 #include "IRequestManager.hpp"
 #include "RequestHeader.hpp"
-#include <string>
 
 class RedirectRequestHandler : public IRequestHandler
 {

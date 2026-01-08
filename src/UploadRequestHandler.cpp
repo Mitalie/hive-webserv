@@ -1,13 +1,15 @@
 #include "UploadRequestHandler.hpp"
-#include "IRequestManager.hpp"
-#include "RequestHeader.hpp"
-#include "Config.hpp"
+
 #include <cstddef>
 #include <filesystem>
 #include <iostream>
-#include <string>
 #include <span>
+#include <string>
 #include <system_error>
+
+#include "Config.hpp"
+#include "IRequestManager.hpp"
+#include "RequestHeader.hpp"
 
 UploadRequestHandler::UploadRequestHandler(IRequestManager &manager, const RequestHeader &header, const RouteConfig &route)
 	: manager_(manager), header_(header), route_(route), done_(false), fileOpen_(false)

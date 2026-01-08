@@ -1,3 +1,5 @@
+#include "CgiHandler.hpp"
+
 #include <cctype>
 #include <cstdlib>
 #include <cstring>
@@ -14,10 +16,9 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "CgiHandler.hpp"
-#include "RequestHeader.hpp"
 #include "Poll.hpp"
 #include "ReadWriteFD.hpp"
+#include "RequestHeader.hpp"
 #include "UnixFD.hpp"
 
 CgiHandler::CgiHandler(RequestHeader header,

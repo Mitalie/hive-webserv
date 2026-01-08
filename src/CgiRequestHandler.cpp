@@ -1,3 +1,5 @@
+#include "CgiRequestHandler.hpp"
+
 #include <algorithm>
 #include <chrono>
 #include <cstddef>
@@ -10,12 +12,11 @@
 #include <string_view>
 
 #include "CgiHandler.hpp"
-#include "CgiRequestHandler.hpp"
 #include "Config.hpp"
-#include "RequestHeader.hpp"
 #include "HeaderFields.hpp"
 #include "IRequestManager.hpp"
 #include "ReadWriteFD.hpp"
+#include "RequestHeader.hpp"
 
 CgiRequestHandler::CgiRequestHandler(IRequestManager &manager, const RequestHeader &header, const RouteConfig &route)
 	: manager_(manager),

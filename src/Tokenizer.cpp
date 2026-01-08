@@ -1,8 +1,8 @@
 #include "Tokenizer.hpp"
 
 #include <istream>
-#include <string>
 #include <stdexcept>
+#include <string>
 
 Tokenizer::Tokenizer(std::istream &in) : in(in), buffer(0), hasBuffered(false) {}
 

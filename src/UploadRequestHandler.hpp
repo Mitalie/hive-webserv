@@ -1,13 +1,14 @@
 #pragma once
 
+#include <cstddef>
+#include <fstream>
+#include <span>
+#include <string>
+
+#include "Config.hpp"
 #include "IRequestHandler.hpp"
 #include "IRequestManager.hpp"
 #include "RequestHeader.hpp"
-#include "Config.hpp"
-#include <string>
-#include <span>
-#include <cstddef>
-#include <fstream>
 
 class UploadRequestHandler : public IRequestHandler
 {

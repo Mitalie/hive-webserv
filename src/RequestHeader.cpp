@@ -1,3 +1,5 @@
+#include "RequestHeader.hpp"
+
 #include <cstddef>
 #include <map>
 #include <sstream>
@@ -6,7 +8,6 @@
 #include <string_view>
 #include <vector>
 
-#include "RequestHeader.hpp"
 #include "Utils.hpp"
 
 RequestHeader::RequestHeader(const std::string_view &raw)

@@ -1,3 +1,5 @@
+#include "RequestHeaderReader.hpp"
+
 #include <algorithm>
 #include <cstddef>
 #include <optional>
@@ -5,7 +7,6 @@
 #include <stdexcept>
 #include <string_view>
 
-#include "RequestHeaderReader.hpp"
 #include "RequestHeader.hpp"
 
 constexpr std::string_view terminator = "\r\n\r\n";

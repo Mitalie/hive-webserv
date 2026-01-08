@@ -7,9 +7,9 @@
 
 #include "CgiHandler.hpp"
 #include "Config.hpp"
-#include "RequestHeader.hpp"
 #include "IRequestHandler.hpp"
 #include "IRequestManager.hpp"
+#include "RequestHeader.hpp"
 
 /*
 	Bridge between the Server logic and the CGI process.

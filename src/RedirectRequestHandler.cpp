@@ -1,9 +1,11 @@
 #include "RedirectRequestHandler.hpp"
+
+#include <cstddef>
+#include <span>
+#include <string>
+
 #include "IRequestManager.hpp"
 #include "RequestHeader.hpp"
-#include <span>
-#include <cstddef>
-#include <string>
 
 RedirectRequestHandler::RedirectRequestHandler(IRequestManager &manager, const RequestHeader &header, const std::string &location, int code)
 	: manager_(manager), header_(header), location_(location), code_(code)
