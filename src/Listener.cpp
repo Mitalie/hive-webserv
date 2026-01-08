@@ -56,8 +56,9 @@ Listener::Listener(const HostPort &hostport, const ListenerConfig &config)
 	fd.addToPoll(
 		[this]()
 		{ onReadable(); },
-		{},	 // listening socket is never writable
-		{}); // ignore errors in test
+		{}, // listening socket is never writable
+		[]()
+		{ throw std::runtime_error("Listener socket error"); });
 	fd.setReadableInterest(true);
 }
 

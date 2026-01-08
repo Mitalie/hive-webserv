@@ -60,11 +60,14 @@ ClientHandler::ClientHandler(const ListenerConfig &config, UnixFD &&fd)
 		  std::move(fd),
 		  [this](std::span<const char> newData)
 		  { socketReadCallback(newData); },
-		  {}, // TODO: handle EOF
-		  {}, // TODO: handle read error
+		  [this]()
+		  { throw TerminateClientException(this); }, // Handle EOF (Client closed connection)
+		  [this]()
+		  { throw TerminateClientException(this); }, // Handle Read Error
 		  [this](size_t bufferSize)
 		  { socketWriteCallback(bufferSize); },
-		  {}) // TODO: handle write error
+		  [this]()
+		  { throw TerminateClientException(this); }) // Handle Write Error
 {
 	leftoverData.reserve(socket.maxReadSize);
 	updateWakeup();
@@ -167,9 +170,9 @@ void ClientHandler::handleDataChunkHeader()
 			// End of chunked body
 			chunked = false;
 
-			// 	// NEW: Signal handler that body is complete
-			// 	if (request)
-			// 		request->onBodyDone();
+			// Signal handler that body is complete
+			if (request)
+				request->onBodyDone();
 		}
 	}
 }
@@ -186,11 +189,11 @@ void ClientHandler::handleDataBody()
 	availableData = availableData.subspan(usableLen);
 	bodyLen -= usableLen;
 
-	// // NEW: Check if this was the last piece of a Content-Length body
-	// if (bodyLen == 0 && !chunked && request)
-	// {
-	// 	request->onBodyDone();
-	// }
+	// Check if this was the last piece of a Content-Length body
+	if (bodyLen == 0 && !chunked && request)
+	{
+		request->onBodyDone();
+	}
 }
 
 void ClientHandler::handleData()

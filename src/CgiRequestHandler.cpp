@@ -72,7 +72,11 @@ void CgiRequestHandler::launchCgiProcess()
 				if (bufferSize < PIPE_WRITE_LOW_WATER_MARK)
 					manager_.setReadingBody(true);
 			},
-			ReadWriteFD::WritableErrorCallback{});
+			// Handle write error (Child Stdin broken/closed)
+			[this]()
+			{
+				manager_.onRequestError();
+			});
 	}
 	catch (const std::exception &e)
 	{
