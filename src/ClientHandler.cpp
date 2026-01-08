@@ -119,20 +119,32 @@ void ClientHandler::checkAndRoute(RequestHeader &&header)
 
 void ClientHandler::createRequestHandler(RequestHeader &&header)
 {
-	// TODO: maybe process body length / mode within header parser?
-	std::string cl = header.get("content-length");
 	bodyLen = 0;
-	if (!cl.empty())
-		bodyLen = std::stoull(cl);
+	chunked = false;
 
-	std::string te = header.get("transfer-encoding");
-	if (!te.empty())
+	try
 	{
-		// TODO: delete content-length if transfer-encoding exists
-		bodyLen = 0;
-		// TODO: incomplete check, doesn't parse value properly
-		if (te.find("chunked") != std::string::npos)
+		// Check Transfer-Encoding first (takes precedence over Content-Length)
+		if (header.hasChunkedBody())
+		{
 			chunked = true;
+			// Per HTTP/1.1, Content-Length must be ignored when Transfer-Encoding is present
+			header.fields.remove("content-length");
+		}
+		else
+		{
+			// No chunked encoding, check Content-Length
+			std::optional<size_t> contentLength = header.getContentLength();
+			if (contentLength)
+				bodyLen = *contentLength;
+		}
+	}
+	catch (const RequestHeader::InvalidHeader &e)
+	{
+		// Header parsing error - return appropriate error response
+		const ServerConfig &serverConfig = findServerConfig(header, config);
+		request = std::make_unique<ErrorRequestHandler>(*this, header, serverConfig, e.statusCode);
+		return;
 	}
 
 	requestDone = false;

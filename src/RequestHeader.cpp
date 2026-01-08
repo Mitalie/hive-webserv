@@ -1,7 +1,12 @@
 #include "RequestHeader.hpp"
 
+#include <algorithm>
+#include <cctype>
+#include <charconv>
 #include <cstddef>
+#include <limits>
 #include <map>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -44,4 +49,223 @@ std::string RequestHeader::get(const std::string &key) const
 const std::map<std::string, std::vector<std::string>> &RequestHeader::all() const
 {
 	return fields.all();
+}
+
+// --- Utility for comma-separated header values ---
+
+std::vector<std::string> RequestHeader::parseList(const std::string &headerValue)
+{
+	std::vector<std::string> result;
+	if (headerValue.empty())
+		return result;
+
+	size_t start = 0;
+	while (start < headerValue.size())
+	{
+		// Find the next comma
+		size_t end = headerValue.find(',', start);
+		if (end == std::string::npos)
+			end = headerValue.size();
+
+		// Extract and trim the item
+		std::string_view item(headerValue.data() + start, end - start);
+		std::string trimmed(trim(item));
+		if (!trimmed.empty())
+			result.push_back(trimmed);
+
+		start = end + 1;
+	}
+	return result;
+}
+
+// --- Content-Length ---
+
+std::optional<size_t> RequestHeader::getContentLength() const
+{
+	std::string value = fields.get("content-length");
+	if (value.empty())
+		return std::nullopt;
+
+	// Trim whitespace
+	std::string_view trimmed = trim(value);
+	if (trimmed.empty())
+		throw InvalidHeader(400, "Content-Length header is empty");
+
+	// Check for invalid characters (only digits allowed)
+	for (char c : trimmed)
+	{
+		if (!std::isdigit(static_cast<unsigned char>(c)))
+			throw InvalidHeader(400, "Content-Length contains non-digit characters");
+	}
+
+	// Parse using std::from_chars for safety
+	size_t result = 0;
+	auto [ptr, ec] = std::from_chars(trimmed.data(), trimmed.data() + trimmed.size(), result);
+
+	if (ec == std::errc::result_out_of_range)
+		throw InvalidHeader(400, "Content-Length value too large");
+	if (ec != std::errc{} || ptr != trimmed.data() + trimmed.size())
+		throw InvalidHeader(400, "Content-Length is not a valid number");
+
+	return result;
+}
+
+// --- Transfer-Encoding ---
+
+std::vector<std::string> RequestHeader::getTransferEncodings() const
+{
+	std::string value = fields.get("transfer-encoding");
+	if (value.empty())
+		return {};
+
+	std::vector<std::string> encodings = parseList(value);
+
+	// Convert to lowercase for comparison
+	for (std::string &enc : encodings)
+	{
+		std::transform(enc.begin(), enc.end(), enc.begin(),
+					   [](unsigned char c)
+					   { return std::tolower(c); });
+	}
+
+	return encodings;
+}
+
+bool RequestHeader::hasChunkedBody() const
+{
+	std::vector<std::string> encodings = getTransferEncodings();
+	if (encodings.empty())
+		return false;
+
+	// Check for unsupported encodings (we only support "chunked")
+	// Per HTTP/1.1, chunked must be the final encoding if present
+	for (size_t i = 0; i < encodings.size(); ++i)
+	{
+		const std::string &enc = encodings[i];
+		if (enc == "chunked")
+		{
+			// chunked must be the last encoding
+			if (i != encodings.size() - 1)
+				throw InvalidHeader(400, "chunked must be the final transfer encoding");
+			return true;
+		}
+		// Only identity is allowed without processing
+		if (enc != "identity")
+			throw InvalidHeader(501, "Unsupported transfer encoding: " + enc);
+	}
+
+	return false;
+}
+
+// --- Content-Type ---
+
+std::string RequestHeader::getContentType() const
+{
+	std::string value = fields.get("content-type");
+	if (value.empty())
+		return "";
+
+	// Content-Type format: media-type *( ";" parameter )
+	// Extract just the media type (before first semicolon)
+	size_t semicolon = value.find(';');
+	std::string_view mediaType;
+	if (semicolon != std::string::npos)
+		mediaType = trim(std::string_view(value).substr(0, semicolon));
+	else
+		mediaType = trim(value);
+
+	// Convert to lowercase for comparison
+	std::string result(mediaType);
+	std::transform(result.begin(), result.end(), result.begin(),
+				   [](unsigned char c)
+				   { return std::tolower(c); });
+
+	return result;
+}
+
+std::string RequestHeader::getContentTypeWithParams() const
+{
+	return fields.get("content-type");
+}
+
+std::string RequestHeader::getContentTypeParam(const std::string &param) const
+{
+	std::string value = fields.get("content-type");
+	if (value.empty())
+		return "";
+
+	// Find parameter (case-insensitive)
+	std::string paramLower = param;
+	std::transform(paramLower.begin(), paramLower.end(), paramLower.begin(),
+				   [](unsigned char c)
+				   { return std::tolower(c); });
+
+	// Parse parameters after the media type
+	size_t pos = value.find(';');
+	while (pos != std::string::npos && pos < value.size())
+	{
+		// Skip the semicolon and whitespace
+		pos++;
+		while (pos < value.size() && std::isspace(static_cast<unsigned char>(value[pos])))
+			pos++;
+
+		// Find the equals sign
+		size_t equals = value.find('=', pos);
+		if (equals == std::string::npos)
+			break;
+
+		// Extract parameter name
+		std::string_view paramName = trim(std::string_view(value).substr(pos, equals - pos));
+		std::string paramNameLower(paramName);
+		std::transform(paramNameLower.begin(), paramNameLower.end(), paramNameLower.begin(),
+					   [](unsigned char c)
+					   { return std::tolower(c); });
+
+		// Find parameter value (may be quoted)
+		size_t valueStart = equals + 1;
+		size_t valueEnd;
+
+		if (valueStart < value.size() && value[valueStart] == '"')
+		{
+			// Quoted value
+			valueStart++;
+			valueEnd = value.find('"', valueStart);
+			if (valueEnd == std::string::npos)
+				valueEnd = value.size();
+		}
+		else
+		{
+			// Unquoted value - ends at semicolon or end
+			valueEnd = value.find(';', valueStart);
+			if (valueEnd == std::string::npos)
+				valueEnd = value.size();
+		}
+
+		if (paramNameLower == paramLower)
+		{
+			std::string_view paramValue = std::string_view(value).substr(valueStart, valueEnd - valueStart);
+			return std::string(trim(paramValue));
+		}
+
+		// Move to next parameter
+		pos = value.find(';', valueEnd);
+	}
+
+	return "";
+}
+
+// --- Method body expectations ---
+
+bool RequestHeader::methodExpectsBody() const
+{
+	return method_ == "POST" || method_ == "PUT" || method_ == "PATCH";
+}
+
+bool RequestHeader::methodForbidsBody() const
+{
+	// Note: HTTP/1.1 allows bodies on any request, but these methods
+	// typically shouldn't have one and many servers ignore them
+	return method_ == "GET" || method_ == "HEAD" ||
+		   method_ == "DELETE" || method_ == "OPTIONS" ||
+		   method_ == "TRACE" || method_ == "CONNECT";
 }
