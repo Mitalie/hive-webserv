@@ -169,5 +169,5 @@ bool RequestHeader::methodForbidsBody() const
 	// typically shouldn't have one and many servers ignore them
 	return method_ == "GET" || method_ == "HEAD" ||
 		   method_ == "DELETE" || method_ == "OPTIONS" ||
-		   method_ == "TRACE" || method_ == "CONNECT";
+		   method_ == "TRACE";
 }
