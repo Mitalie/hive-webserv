@@ -81,10 +81,16 @@ std::vector<std::string> RequestHeader::parseList(const std::string &headerValue
 
 std::optional<size_t> RequestHeader::getContentLength() const
 {
-	std::string value = fields.get("content-length");
-	if (value.empty())
+	// RFC 9110 Section 8.6: Multiple Content-Length headers are not allowed
+	const auto &allFields = fields.all();
+	auto it = allFields.find("content-length");
+	if (it == allFields.end() || it->second.empty())
 		return std::nullopt;
 
+	if (it->second.size() > 1)
+		throw InvalidHeader(400, "Multiple Content-Length headers are not allowed");
+
+	std::string value = it->second.front();
 	// Trim whitespace
 	std::string_view trimmed = trim(value);
 	if (trimmed.empty())
@@ -123,8 +129,8 @@ std::vector<std::string> RequestHeader::getTransferEncodings() const
 	for (std::string &enc : encodings)
 	{
 		std::transform(enc.begin(), enc.end(), enc.begin(),
-			[](unsigned char c)
-			{ return std::tolower(c); });
+					   [](unsigned char c)
+					   { return std::tolower(c); });
 	}
 
 	return encodings;
