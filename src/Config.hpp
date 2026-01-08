@@ -1,5 +1,4 @@
-#ifndef WEBSERV_CONFIG_HPP
-#define WEBSERV_CONFIG_HPP
+#pragma once
 
 #include <string>
 #include <vector>
@@ -97,5 +96,3 @@ typedef std::vector<ServerConfig> ListenerConfig;
 typedef std::map<HostPort, ListenerConfig> PortServerMap;
 
 PortServerMap parseConfig(const std::string &filename);
-
-#endif // WEBSERV_CONFIG_HPP

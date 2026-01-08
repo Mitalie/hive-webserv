@@ -1,5 +1,4 @@
-#ifndef WEBSERV_HEADERFIELDS_HPP
-#define WEBSERV_HEADERFIELDS_HPP
+#pragma once
 
 #include <map>
 #include <string>
@@ -58,5 +57,3 @@ private:
 	// Convert key to lowercase for case-insensitive storage
 	static std::string toLower(std::string s);
 };
-
-#endif // WEBSERV_HEADERFIELDS_HPP

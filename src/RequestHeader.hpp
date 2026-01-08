@@ -1,5 +1,4 @@
-#ifndef WEBSERV_REQUESTHEADER_HPP
-#define WEBSERV_REQUESTHEADER_HPP
+#pragma once
 
 #include <map>
 #include <string>
@@ -42,5 +41,3 @@ private:
 	std::string path_;	  // stores the request path/URI
 	std::string version_; // stores the HTTP version string (e.g., HTTP/1.1)
 };
-
-#endif // WEBSERV_REQUESTHEADER_HPP
