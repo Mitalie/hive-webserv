@@ -4,7 +4,6 @@
 #include <cctype>
 #include <charconv>
 #include <cstddef>
-#include <limits>
 #include <map>
 #include <optional>
 #include <sstream>
@@ -124,8 +123,8 @@ std::vector<std::string> RequestHeader::getTransferEncodings() const
 	for (std::string &enc : encodings)
 	{
 		std::transform(enc.begin(), enc.end(), enc.begin(),
-					   [](unsigned char c)
-					   { return std::tolower(c); });
+			[](unsigned char c)
+			{ return std::tolower(c); });
 	}
 
 	return encodings;
@@ -155,103 +154,6 @@ bool RequestHeader::hasChunkedBody() const
 	}
 
 	return false;
-}
-
-// --- Content-Type ---
-
-std::string RequestHeader::getContentType() const
-{
-	std::string value = fields.get("content-type");
-	if (value.empty())
-		return "";
-
-	// Content-Type format: media-type *( ";" parameter )
-	// Extract just the media type (before first semicolon)
-	size_t semicolon = value.find(';');
-	std::string_view mediaType;
-	if (semicolon != std::string::npos)
-		mediaType = trim(std::string_view(value).substr(0, semicolon));
-	else
-		mediaType = trim(value);
-
-	// Convert to lowercase for comparison
-	std::string result(mediaType);
-	std::transform(result.begin(), result.end(), result.begin(),
-				   [](unsigned char c)
-				   { return std::tolower(c); });
-
-	return result;
-}
-
-std::string RequestHeader::getContentTypeWithParams() const
-{
-	return fields.get("content-type");
-}
-
-std::string RequestHeader::getContentTypeParam(const std::string &param) const
-{
-	std::string value = fields.get("content-type");
-	if (value.empty())
-		return "";
-
-	// Find parameter (case-insensitive)
-	std::string paramLower = param;
-	std::transform(paramLower.begin(), paramLower.end(), paramLower.begin(),
-				   [](unsigned char c)
-				   { return std::tolower(c); });
-
-	// Parse parameters after the media type
-	size_t pos = value.find(';');
-	while (pos != std::string::npos && pos < value.size())
-	{
-		// Skip the semicolon and whitespace
-		pos++;
-		while (pos < value.size() && std::isspace(static_cast<unsigned char>(value[pos])))
-			pos++;
-
-		// Find the equals sign
-		size_t equals = value.find('=', pos);
-		if (equals == std::string::npos)
-			break;
-
-		// Extract parameter name
-		std::string_view paramName = trim(std::string_view(value).substr(pos, equals - pos));
-		std::string paramNameLower(paramName);
-		std::transform(paramNameLower.begin(), paramNameLower.end(), paramNameLower.begin(),
-					   [](unsigned char c)
-					   { return std::tolower(c); });
-
-		// Find parameter value (may be quoted)
-		size_t valueStart = equals + 1;
-		size_t valueEnd;
-
-		if (valueStart < value.size() && value[valueStart] == '"')
-		{
-			// Quoted value
-			valueStart++;
-			valueEnd = value.find('"', valueStart);
-			if (valueEnd == std::string::npos)
-				valueEnd = value.size();
-		}
-		else
-		{
-			// Unquoted value - ends at semicolon or end
-			valueEnd = value.find(';', valueStart);
-			if (valueEnd == std::string::npos)
-				valueEnd = value.size();
-		}
-
-		if (paramNameLower == paramLower)
-		{
-			std::string_view paramValue = std::string_view(value).substr(valueStart, valueEnd - valueStart);
-			return std::string(trim(paramValue));
-		}
-
-		// Move to next parameter
-		pos = value.find(';', valueEnd);
-	}
-
-	return "";
 }
 
 // --- Method body expectations ---

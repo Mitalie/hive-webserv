@@ -63,18 +63,6 @@ public:
 	// Returns empty vector if header is not present.
 	std::vector<std::string> getTransferEncodings() const;
 
-	// Get Content-Type media type (without parameters).
-	// Returns empty string if header is not present.
-	std::string getContentType() const;
-
-	// Get Content-Type with all parameters.
-	// Returns empty string if header is not present.
-	std::string getContentTypeWithParams() const;
-
-	// Get a specific parameter from Content-Type (e.g., "boundary", "charset").
-	// Returns empty string if not found.
-	std::string getContentTypeParam(const std::string &param) const;
-
 	// Check if this request method typically has a body.
 	// Returns true for POST, PUT, PATCH.
 	bool methodExpectsBody() const;

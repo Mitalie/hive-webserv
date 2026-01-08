@@ -56,15 +56,16 @@ static const ServerConfig &findServerConfig(const RequestHeader &header, const L
 
 ClientHandler::ClientHandler(const ListenerConfig &config, UnixFD &&fd)
 	: config(config),
-	  socket(
-		  std::move(fd),
-		  [this](std::span<const char> newData)
-		  { socketReadCallback(newData); },
-		  {}, // TODO: handle EOF
-		  {}, // TODO: handle read error
-		  [this](size_t bufferSize)
-		  { socketWriteCallback(bufferSize); },
-		  {}) // TODO: handle write error
+	socket(
+		std::move(fd),
+		[this](std::span<const char> newData)
+		{ socketReadCallback(newData); },
+		{}, // TODO: handle EOF
+		{}, // TODO: handle read error
+		[this](size_t bufferSize)
+		{ socketWriteCallback(bufferSize); },
+		{}
+	) // TODO: handle write error
 {
 	leftoverData.reserve(socket.maxReadSize);
 	updateWakeup();
