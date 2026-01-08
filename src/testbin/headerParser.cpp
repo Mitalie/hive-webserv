@@ -7,16 +7,16 @@
 #include "RequestHeader.hpp" // include the Header declaration so we can use it
 
 int main()
-{												 // small test program to demonstrate Header parsing
-	const std::string raw_request =				 // raw HTTP request string used for the smoke test
-		"GET /some/path?query=1 HTTP/1.1\r\n"	 // request-line with method, path, version
-		"Host: example.com\r\n"					 // Host header
-		"User-Agent: UnitTest/1.0\r\n"			 // User-Agent header
+{												  // small test program to demonstrate Header parsing
+	const std::string raw_request =				  // raw HTTP request string used for the smoke test
+		"GET /some/path?query=1 HTTP/1.1\r\n"	  // request-line with method, path, version
+		"Host: example.com\r\n"					  // Host header
+		"User-Agent: UnitTest/1.0\r\n"			  // User-Agent header
 		"X-Custom-Header: value with spaces\r\n"; // a custom header with spaces in the value
 
 	try
 	{
-		RequestHeader h(raw_request);							// construct Header and parse in constructor (may throw)
+		RequestHeader h(raw_request);					// construct Header and parse in constructor (may throw)
 		std::cout << "Method: " << h.method() << "\n";	// print parsed method
 		std::cout << "Path:   " << h.path() << "\n";	// print parsed path
 		std::cout << "Ver:    " << h.version() << "\n"; // print parsed HTTP version
@@ -25,8 +25,10 @@ int main()
 		for (const auto &kv : h.all())
 		{
 			std::cout << kv.first << ": ";
-			for (size_t i = 0; i < kv.second.size(); ++i) {
-				if (i > 0) std::cout << ", ";
+			for (size_t i = 0; i < kv.second.size(); ++i)
+			{
+				if (i > 0)
+					std::cout << ", ";
 				std::cout << kv.second[i];
 			}
 			std::cout << "\n";
@@ -40,7 +42,6 @@ int main()
 		return 2;													  // non-zero exit indicates failure in test
 	}
 
-
 	// RFC9110: repeated header field test
 	const std::string repeated =
 		"GET /repeat HTTP/1.1\r\n"
@@ -48,7 +49,8 @@ int main()
 		"Example-Field: Baz\r\n"
 		"Host: test.com\r\n";
 
-	try {
+	try
+	{
 		RequestHeader h(repeated);
 		assert(h.method() == "GET");
 		assert(h.path() == "/repeat");
@@ -57,31 +59,38 @@ int main()
 		assert(h.get("Example-Field") == "Foo, Bar, Baz");
 		assert(h.get("Host") == "test.com");
 		std::cout << "Combined Example-Field: " << h.get("Example-Field") << "\n";
-	} catch (const std::exception &e) {
+	}
+	catch (const std::exception &e)
+	{
 		std::cerr << "Repeated header parse threw: " << e.what() << "\n";
 		return 2;
 	}
 
 	// Error case: empty input -> should throw
 	bool threw = false;
-	try {
+	try
+	{
 		RequestHeader h("");
-	} catch (const std::exception &) {
+	}
+	catch (const std::exception &)
+	{
 		threw = true;
 	}
 	assert(threw && "Empty request should throw in constructor");
 
 	// Error case: malformed request-line
 	threw = false;
-	try {
+	try
+	{
 		RequestHeader h("BADREQUEST\r\nHost: x\r\n");
-	} catch (const std::exception &) {
+	}
+	catch (const std::exception &)
+	{
 		threw = true;
 	}
 	assert(threw && "Malformed request-line should throw in constructor");
 
 	std::cout << "All Header tests passed\n";
-
 
 	return 0; // success
 }

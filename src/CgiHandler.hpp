@@ -23,16 +23,16 @@ class CgiHandler
 public:
 	/*
 		Constructor initializes the handler and immediately starts the CGI process.
-		
+
 		Throws std::runtime_error if system calls (pipe, fork, fcntl) fail.
-		
+
 		Upon successful construction:
 		1. Anonymous pipes are created.
 		2. Child process is forked and script is running.
 		3. Reading from the script's output (stdout) is automatically started.
 	*/
-	CgiHandler(RequestHeader header, 
-			   std::string scriptPath, 
+	CgiHandler(RequestHeader header,
+			   std::string scriptPath,
 			   std::string interpreterPath,
 			   ReadWriteFD::ReadableDataCallback stdoutReadCallback,
 			   ReadWriteFD::ReadableEofCallback stdoutEofCallback,

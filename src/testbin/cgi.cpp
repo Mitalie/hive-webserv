@@ -62,13 +62,13 @@ void runTest(const std::string &testName, const std::string &scriptPath,
 	try
 	{
 		RequestHeader header(rawHeader);
-		
+
 		bool running = true;
 		bool writing = true;
 
 		CgiHandler cgi(
-			header, 
-			scriptPath, 
+			header,
+			scriptPath,
 			interpreter,
 			[&out](std::span<const char> data)
 			{
@@ -97,8 +97,7 @@ void runTest(const std::string &testName, const std::string &scriptPath,
 					return;
 				out << "\n[ERR] Write error." << std::endl;
 				running = false;
-			}
-		);
+			});
 
 		// If constructor succeeds, CGI is running.
 		cgi.queueWrite(std::span<const char>(body.data(), body.size()));
@@ -172,10 +171,10 @@ int main()
 			if (outfile.is_open())
 			{
 				for (const auto &t : tests)
-                    runTest(t.name, t.script, t.interp, outfile, t.headers);
-                std::cout << "Done! See output.txt.\n";
-            }
-        }
-    }
-    return 0;
+					runTest(t.name, t.script, t.interp, outfile, t.headers);
+				std::cout << "Done! See output.txt.\n";
+			}
+		}
+	}
+	return 0;
 }

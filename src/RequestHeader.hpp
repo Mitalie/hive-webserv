@@ -10,12 +10,12 @@
 
 /*
 	RequestHeader class holds parsed HTTP request header information.
-	
+
 	Contains:
 	- Request-line fields: method, path, version
 	- Header fields: stored in a public HeaderFields object
-	
-	For parsing CGI response headers (which have no request-line), 
+
+	For parsing CGI response headers (which have no request-line),
 	use HeaderFields directly instead.
 */
 class RequestHeader
@@ -38,9 +38,9 @@ public:
 	const std::map<std::string, std::vector<std::string>> &all() const;
 
 private:
-	std::string method_;	// stores the HTTP method (e.g., GET, POST)
-	std::string path_;		// stores the request path/URI
-	std::string version_;	// stores the HTTP version string (e.g., HTTP/1.1)
+	std::string method_;  // stores the HTTP method (e.g., GET, POST)
+	std::string path_;	  // stores the request path/URI
+	std::string version_; // stores the HTTP version string (e.g., HTTP/1.1)
 };
 
 #endif // WEBSERV_REQUESTHEADER_HPP

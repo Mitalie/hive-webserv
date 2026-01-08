@@ -63,8 +63,8 @@ void runIntegrationTest(const std::string &testName, const std::string &scriptFi
 		" HTTP/1.1\r\n"
 		"Host: localhost\r\n"
 		"Content-Length: 5\r\n"
-		"Content-Type: text/plain\r\n"; 
-	
+		"Content-Type: text/plain\r\n";
+
 	try
 	{
 		RequestHeader header(rawHeader);
@@ -73,9 +73,9 @@ void runIntegrationTest(const std::string &testName, const std::string &scriptFi
 
 		CgiRequestHandler handler(mockManager, header, route);
 		std::string body = "hello";
-		
+
 		handler.onBodyData(std::span<const char>(body.data(), body.size()));
-		
+
 		// Signal that the body is complete (simulating ClientHandler behavior)
 		handler.onBodyDone();
 

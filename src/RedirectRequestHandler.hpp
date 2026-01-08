@@ -5,16 +5,18 @@
 #include "RequestHeader.hpp"
 #include <string>
 
-class RedirectRequestHandler : public IRequestHandler {
+class RedirectRequestHandler : public IRequestHandler
+{
 public:
-    RedirectRequestHandler(IRequestManager& manager, const RequestHeader& header, const std::string& location, int code);
-    virtual ~RedirectRequestHandler();
+	RedirectRequestHandler(IRequestManager &manager, const RequestHeader &header, const std::string &location, int code);
+	virtual ~RedirectRequestHandler();
 	// IRequestHandler interface
-    void onBodyData(std::span<const char> data) override;
-    void notifyResponseBuffer(size_t bufferSize) override;
+	void onBodyData(std::span<const char> data) override;
+	void notifyResponseBuffer(size_t bufferSize) override;
+
 private:
-    IRequestManager& manager_;
-    RequestHeader header_;
-    std::string location_;
-    int code_;
+	IRequestManager &manager_;
+	RequestHeader header_;
+	std::string location_;
+	int code_;
 };

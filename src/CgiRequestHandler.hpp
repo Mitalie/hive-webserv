@@ -14,7 +14,7 @@
 /*
 	Bridge between the Server logic and the CGI process.
 	Implements flow control (backpressure) and timeout management.
-	
+
 	For chunked request bodies, the CGI process launch is deferred until
 	the entire body is received, since CGI requires CONTENT_LENGTH.
 */
@@ -51,17 +51,17 @@ private:
 	RequestHeader storedHeader_;
 	std::string scriptPath_;
 	std::string interpreter_;
-	
+
 	// Request body buffering (for chunked transfer from client)
-	bool bufferingRequestBody_ = false;		// True if client used chunked encoding
-	std::string requestBodyBuffer_;	// Buffer for chunked request body
+	bool bufferingRequestBody_ = false; // True if client used chunked encoding
+	std::string requestBodyBuffer_;		// Buffer for chunked request body
 
 	// Buffering for CGI headers
 	std::string responseBuffer_;
 	bool headersParsed_ = false;
 
 	// Response body handling
-	bool useChunkedEncoding_ = false;	// True if CGI didn't provide Content-Length
+	bool useChunkedEncoding_ = false;			// True if CGI didn't provide Content-Length
 	size_t remainingResponseContentLength_ = 0; // Bytes remaining to send when Content-Length is known
 
 	// Timeout tracking

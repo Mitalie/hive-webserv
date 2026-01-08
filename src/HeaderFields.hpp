@@ -8,11 +8,11 @@
 
 /*
 	HeaderFields stores and parses HTTP header key-value pairs.
-	
+
 	This class is designed to be usable both:
 	- As a child of RequestHeader for parsing HTTP request headers
 	- Standalone for parsing CGI response headers (which have no request-line)
-	
+
 	Keys are stored in lowercase for case-insensitive lookup.
 	Multiple values for the same key are stored as a vector and combined
 	with ", " when retrieved via get().

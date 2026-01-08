@@ -12,7 +12,7 @@
 std::string HeaderFields::toLower(std::string s)
 {
 	std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c)
-		{ return std::tolower(c); });
+				   { return std::tolower(c); });
 	return s;
 }
 
@@ -31,7 +31,7 @@ void HeaderFields::parse(std::string_view data)
 
 		std::string_view line = data.substr(pos, lineEnd - pos);
 		pos = lineEnd + 2; // Always skip \r\n
-		
+
 		// Find colon separator
 		size_t colonPos = line.find(':');
 		if (colonPos == std::string_view::npos)
