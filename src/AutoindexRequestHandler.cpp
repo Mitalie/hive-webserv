@@ -159,7 +159,10 @@ std::string AutoindexRequestHandler::buildHtmlListing()
 		try
 		{
 			auto ftime = std::filesystem::last_write_time(entry.path());
-			auto sctp = std::chrono::clock_cast<std::chrono::system_clock>(ftime);
+			// auto sctp = std::chrono::clock_cast<std::chrono::system_clock>(ftime);
+			// C++ standard library on school computers is missing std::chrono::clock_cast.
+			// Standard requires file_clock to have either to_sys or to_utc; to_sys seems to work.
+			auto sctp = std::chrono::file_clock::to_sys(ftime);
 			std::time_t cftime = std::chrono::system_clock::to_time_t(sctp);
 			char timeBuf[64];
 			std::strftime(timeBuf, sizeof(timeBuf), "%Y-%m-%d %H:%M", std::localtime(&cftime));
