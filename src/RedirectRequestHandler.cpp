@@ -65,6 +65,11 @@ void RedirectRequestHandler::onBodyData(std::span<const char> /*data*/)
 	// Ignore body data for redirects
 }
 
+void RedirectRequestHandler::onBodyDone()
+{
+	// No body to handle for redirects
+}
+
 void RedirectRequestHandler::notifyResponseBuffer(size_t /*bufferSize*/)
 {
 	// No buffering logic needed for simple redirect

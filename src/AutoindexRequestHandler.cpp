@@ -27,6 +27,11 @@ void AutoindexRequestHandler::onBodyData(std::span<const char> /*data*/)
 	// Ignore body data for directory listing (GET only)
 }
 
+void AutoindexRequestHandler::onBodyDone()
+{
+	// No body to handle for directory listing
+}
+
 void AutoindexRequestHandler::notifyResponseBuffer(size_t /*bufferSize*/)
 {
 	// No buffering logic needed for directory listing

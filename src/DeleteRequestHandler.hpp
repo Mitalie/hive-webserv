@@ -15,8 +15,9 @@ class DeleteRequestHandler : public IRequestHandler
 {
 public:
 	DeleteRequestHandler(IRequestManager &manager, const char *filePath);
-	virtual ~DeleteRequestHandler() = default;
+	~DeleteRequestHandler() = default;
 	void onBodyData(std::span<const char> data) override;
+	void onBodyDone() override;
 	void notifyResponseBuffer(size_t bufferSize) override;
 
 private:

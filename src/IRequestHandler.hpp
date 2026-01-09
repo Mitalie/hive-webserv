@@ -30,10 +30,8 @@ public:
 		Called when Content-Length bytes have been read, or when the final
 		chunk of a chunked transfer is received.
 	*/
-	virtual void onBodyDone()
+	virtual void onBodyDone() = 0;
 	// TODO: this should be fully abstract interface, but add default for now to allow merged code to compile
-	{
-	}
 
 	/*
 		Update the write buffer length (of IRequestManager::writeResponseData)

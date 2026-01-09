@@ -12,9 +12,10 @@ class FileRequestHandler : public IRequestHandler
 public:
 	// Router is expected to map and validate file path already, so we take it in the form we need for syscalls
 	FileRequestHandler(IRequestManager &manager, const char *filePath);
-	virtual ~FileRequestHandler();
-	virtual void onBodyData(std::span<const char> data) override;
-	virtual void notifyResponseBuffer(size_t bufferSize) override;
+	~FileRequestHandler();
+	void onBodyData(std::span<const char> data) override;
+	void onBodyDone() override;
+	void notifyResponseBuffer(size_t bufferSize) override;
 
 private:
 	IRequestManager &manager_;

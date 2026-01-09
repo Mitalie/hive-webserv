@@ -29,6 +29,11 @@ void FileRequestHandler::onBodyData(std::span<const char> /*data*/)
 	// Ignore body data for GET
 }
 
+void FileRequestHandler::onBodyDone()
+{
+	// No body to handle for file downloads (GET)
+}
+
 void FileRequestHandler::notifyResponseBuffer(size_t bufferSize)
 {
 	// Resume bulk file sending when buffer is available

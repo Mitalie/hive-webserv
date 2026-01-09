@@ -10,9 +10,10 @@ class RedirectRequestHandler : public IRequestHandler
 {
 public:
 	RedirectRequestHandler(IRequestManager &manager, const RequestHeader &header, const std::string &location, int code);
-	virtual ~RedirectRequestHandler();
+	~RedirectRequestHandler();
 	// IRequestHandler interface
 	void onBodyData(std::span<const char> data) override;
+	void onBodyDone() override;
 	void notifyResponseBuffer(size_t bufferSize) override;
 
 private:

@@ -22,8 +22,9 @@ public:
 		const std::filesystem::path &dir,
 		const std::string &dirName,
 		bool allowParentDirLink);
-	virtual ~AutoindexRequestHandler() = default;
+	~AutoindexRequestHandler() = default;
 	void onBodyData(std::span<const char> data) override;
+	void onBodyDone() override;
 	void notifyResponseBuffer(size_t bufferSize) override;
 
 private:
