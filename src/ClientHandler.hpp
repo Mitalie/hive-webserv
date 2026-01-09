@@ -54,6 +54,7 @@ private:
 	void socketReadCallback(std::span<const char> newData);
 	void bufferedDataCallback();
 	void socketWriteCallback(size_t bufferSize);
+	bool clientEOF = false;
 	void updateWakeup();
 	void setupMainLoopCallback();
 

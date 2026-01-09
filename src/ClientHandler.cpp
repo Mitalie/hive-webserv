@@ -1,5 +1,4 @@
 #include "ClientHandler.hpp"
-
 #include <algorithm>
 #include <cctype>
 #include <cstddef>
@@ -57,17 +56,21 @@ static const ServerConfig &findServerConfig(const RequestHeader &header, const L
 ClientHandler::ClientHandler(const ListenerConfig &config, UnixFD &&fd)
 	: config(config),
 	  socket(
-		  std::move(fd),
-		  [this](std::span<const char> newData)
-		  { socketReadCallback(newData); },
-		  [this]()
-		  { throw TerminateClientException(this); }, // Handle EOF (Client closed connection)
-		  [this]()
-		  { throw TerminateClientException(this); }, // Handle Read Error
-		  [this](size_t bufferSize)
-		  { socketWriteCallback(bufferSize); },
-		  [this]()
-		  { throw TerminateClientException(this); }) // Handle Write Error
+			std::move(fd),
+			[this](std::span<const char> newData)
+			{ socketReadCallback(newData); },
+			[this]()
+			{
+				clientEOF = true;
+				socket.stopReading();
+				updateWakeup();
+			},
+			[this]()
+			{ throw TerminateClientException(this); }, // Handle Read Error
+			[this](size_t bufferSize)
+			{ socketWriteCallback(bufferSize); },
+			[this]()
+			{ throw TerminateClientException(this); }) // Handle Write Error
 {
 	leftoverData.reserve(socket.maxReadSize);
 	updateWakeup();
@@ -274,10 +277,12 @@ void ClientHandler::socketWriteCallback(size_t bufferSize)
 */
 void ClientHandler::updateWakeup()
 {
+	if (clientEOF && request == nullptr)
+		throw TerminateClientException(this);
 	if (processingData)
 		// Still processing, we'll update wakeup when we stop
 		return;
-	if (readingPaused)
+	if (readingPaused || clientEOF)
 		// Request handler takes responsibility for wakeup
 		// No need to cancel pending callback, it will be a one-off and a no-op
 		socket.stopReading();
