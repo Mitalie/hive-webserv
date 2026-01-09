@@ -20,6 +20,7 @@ ErrorRequestHandler::ErrorRequestHandler(
 	int code)
 	: manager_(manager), header_(header), config_(config), code_(code)
 {
+	(void)header_; // TODO: Remove from class if not used
 	sendResponse();
 	manager_.onRequestDone();
 }
