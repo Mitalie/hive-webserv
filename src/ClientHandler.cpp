@@ -9,7 +9,6 @@
 #include <string>
 #include <utility>
 
-#include "CallbackQueue.hpp"
 #include "Config.hpp"
 #include "ErrorRequestHandler.hpp"
 #include "RequestHeader.hpp"
@@ -285,7 +284,7 @@ void ClientHandler::updateWakeup()
 	{
 		// Queue callback to handle buffered data
 		bufferedDataCallbackPending = true;
-		CallbackQueue::queueCallback(
+		cbOwner.queueCallback(
 			[this]()
 			{
 				bufferedDataCallback();
