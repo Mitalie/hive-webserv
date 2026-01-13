@@ -31,6 +31,10 @@ public:
 	// Multiple values are concatenated with ", "
 	std::string get(const std::string &key) const;
 
+	// Get individual comma-separated fields of a header value by key (case-insensitive)
+	// Note that this does not support any kind of escaping or quoting of commas
+	std::vector<std::string_view> getList(const std::string &key) const;
+
 	// Check if a header exists
 	bool has(const std::string &key) const;
 

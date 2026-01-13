@@ -58,6 +58,35 @@ std::string HeaderFields::get(const std::string &key) const
 	return result;
 }
 
+std::vector<std::string_view> HeaderFields::getList(const std::string &key) const
+{
+	std::vector<std::string_view> result;
+
+	auto it = headers_.find(toLower(key));
+	if (it == headers_.end())
+		return result;
+
+	const auto &values = it->second;
+	for (const auto &value : values)
+	{
+		size_t start = 0;
+		while (start < value.size())
+		{
+			size_t end = value.find(',', start);
+			if (end == std::string::npos)
+				end = value.size();
+
+			std::string_view item(value.data() + start, end - start);
+			item = trim(item);
+			if (!item.empty())
+				result.push_back(item);
+
+			start = end + 1;
+		}
+	}
+	return result;
+}
+
 bool HeaderFields::has(const std::string &key) const
 {
 	return headers_.find(toLower(key)) != headers_.end();
