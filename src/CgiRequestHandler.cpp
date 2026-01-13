@@ -95,7 +95,7 @@ size_t CgiRequestHandler::sendChunkedData(std::span<const char> data)
 	snprintf(hexBuf, sizeof(hexBuf), "%zx\r\n", data.size());
 	manager_.writeResponseData(std::string(hexBuf));
 	manager_.writeResponseData(data);
-	return manager_.writeResponseData("\r\n");
+	return manager_.writeResponseData(std::string_view("\r\n"));
 }
 
 void CgiRequestHandler::sendBodyData(std::span<const char> data)
@@ -128,7 +128,7 @@ void CgiRequestHandler::handleCgiEof()
 	// If using chunked encoding, send final chunk
 	if (headersParsed_ && useChunkedEncoding_)
 	{
-		manager_.writeResponseData("0\r\n\r\n");
+		manager_.writeResponseData(std::string_view("0\r\n\r\n"));
 	}
 	responseFinished_ = true;
 	manager_.onRequestDone();
@@ -182,7 +182,7 @@ void CgiRequestHandler::handleCgiOutput(std::span<const char> data)
 		// 4. Send HTTP response: Status Line + Headers + Empty Line
 		manager_.writeResponseData(statusLine);
 		manager_.writeResponseData(cgiHeaders.serialize());
-		manager_.writeResponseData("\r\n");
+		manager_.writeResponseData(std::string_view("\r\n"));
 
 		// 5. Update state
 		headersParsed_ = true;
