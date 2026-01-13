@@ -87,6 +87,18 @@ std::vector<std::string_view> HeaderFields::getList(const std::string &key) cons
 	return result;
 }
 
+static const std::vector<std::string> emptyStrVec;
+
+const std::vector<std::string> &HeaderFields::getRaw(const std::string &key) const
+{
+	auto it = headers_.find(toLower(key));
+	if (it == headers_.end())
+	{
+		return emptyStrVec;
+	}
+	return it->second;
+}
+
 bool HeaderFields::has(const std::string &key) const
 {
 	return headers_.find(toLower(key)) != headers_.end();
@@ -110,7 +122,7 @@ void HeaderFields::set(const std::string &key, const std::string &value)
 
 void HeaderFields::add(const std::string &key, const std::string &value)
 {
-	headers_[toLower(key)].push_back(value);
+	headers_[toLower(key)].emplace_back(trim(value));
 }
 
 const std::map<std::string, std::vector<std::string>> &HeaderFields::all() const
