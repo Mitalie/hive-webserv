@@ -53,7 +53,4 @@ public:
 
 private:
 	std::map<std::string, std::vector<std::string>> headers_;
-
-	// Convert key to lowercase for case-insensitive storage
-	static std::string toLower(std::string s);
 };

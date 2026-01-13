@@ -1,7 +1,5 @@
 #include "HeaderFields.hpp"
 
-#include <algorithm>
-#include <cctype>
 #include <cstddef>
 #include <map>
 #include <stdexcept>
@@ -10,13 +8,6 @@
 #include <vector>
 
 #include "Utils.hpp"
-
-std::string HeaderFields::toLower(std::string s)
-{
-	std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c)
-				   { return std::tolower(c); });
-	return s;
-}
 
 void HeaderFields::parse(std::string_view data)
 {
