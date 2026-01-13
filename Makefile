@@ -93,8 +93,8 @@ re: fclean all
 
 # Add sanitizer flags if requested (e.g. `make SANITIZE=address,undefined`)
 ifneq (,$(strip $(SANITIZE)))
-	def_CXXFLAGS += -fsanitize=$(SANITIZE)
-	def_LDFLAGS += -fsanitize=$(SANITIZE)
+def_CXXFLAGS += -fsanitize=$(SANITIZE)
+def_LDFLAGS += -fsanitize=$(SANITIZE)
 endif
 
 # Combine default def_FLAGS, target specific tgt_FLAGS and user-supplied FLAGS
