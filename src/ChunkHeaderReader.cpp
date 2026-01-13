@@ -172,7 +172,7 @@ std::optional<size_t> ChunkHeaderReader::consumeTrailers(std::span<const char> &
 		if (buffer[0] == CRLF[0] && buffer[1] == CRLF[1])
 		{
 			// No trailers, just final CRLF
-			incomingData = incomingData.subspan(2);
+			incomingData = incomingData.subspan(CRLF.length() - oldBufLen);
 			buffer.clear();
 			consumingTrailers = false;
 			return 0;
