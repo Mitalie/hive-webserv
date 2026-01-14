@@ -19,6 +19,7 @@ SRCS := $(addprefix $(SRCDIR)/,\
 	DummyRequestHandler.cpp \
 	RequestHeader.cpp \
 	HeaderFields.cpp \
+	HeaderUtil.cpp \
 	RequestHeaderReader.cpp \
 	Listener.cpp \
 	Poll.cpp \

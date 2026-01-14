@@ -31,6 +31,14 @@ public:
 	// Multiple values are concatenated with ", "
 	std::string get(const std::string &key) const;
 
+	// Get individual comma-separated fields of a header value by key (case-insensitive)
+	// Note that this does not support any kind of escaping or quoting of commas
+	std::vector<std::string_view> getList(const std::string &key) const;
+
+	// Get raw header values as present in input to `parse` or `add`
+	// Values are whitespace-trimmed before storing
+	const std::vector<std::string> &getRaw(const std::string &key) const;
+
 	// Check if a header exists
 	bool has(const std::string &key) const;
 
@@ -53,7 +61,4 @@ public:
 
 private:
 	std::map<std::string, std::vector<std::string>> headers_;
-
-	// Convert key to lowercase for case-insensitive storage
-	static std::string toLower(std::string s);
 };

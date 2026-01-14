@@ -1,7 +1,5 @@
 #include "HeaderFields.hpp"
 
-#include <algorithm>
-#include <cctype>
 #include <cstddef>
 #include <map>
 #include <stdexcept>
@@ -10,13 +8,6 @@
 #include <vector>
 
 #include "Utils.hpp"
-
-std::string HeaderFields::toLower(std::string s)
-{
-	std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c)
-				   { return std::tolower(c); });
-	return s;
-}
 
 void HeaderFields::parse(std::string_view data)
 {
@@ -67,6 +58,47 @@ std::string HeaderFields::get(const std::string &key) const
 	return result;
 }
 
+std::vector<std::string_view> HeaderFields::getList(const std::string &key) const
+{
+	std::vector<std::string_view> result;
+
+	auto it = headers_.find(toLower(key));
+	if (it == headers_.end())
+		return result;
+
+	const auto &values = it->second;
+	for (const auto &value : values)
+	{
+		size_t start = 0;
+		while (start < value.size())
+		{
+			size_t end = value.find(',', start);
+			if (end == std::string::npos)
+				end = value.size();
+
+			std::string_view item(value.data() + start, end - start);
+			item = trim(item);
+			if (!item.empty())
+				result.push_back(item);
+
+			start = end + 1;
+		}
+	}
+	return result;
+}
+
+static const std::vector<std::string> emptyStrVec;
+
+const std::vector<std::string> &HeaderFields::getRaw(const std::string &key) const
+{
+	auto it = headers_.find(toLower(key));
+	if (it == headers_.end())
+	{
+		return emptyStrVec;
+	}
+	return it->second;
+}
+
 bool HeaderFields::has(const std::string &key) const
 {
 	return headers_.find(toLower(key)) != headers_.end();
@@ -90,7 +122,7 @@ void HeaderFields::set(const std::string &key, const std::string &value)
 
 void HeaderFields::add(const std::string &key, const std::string &value)
 {
-	headers_[toLower(key)].push_back(value);
+	headers_[toLower(key)].emplace_back(trim(value));
 }
 
 const std::map<std::string, std::vector<std::string>> &HeaderFields::all() const

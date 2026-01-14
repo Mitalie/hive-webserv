@@ -11,6 +11,8 @@
 
 #include "Config.hpp"
 #include "ErrorRequestHandler.hpp"
+#include "HeaderUtil.hpp"
+#include "IRequestHandler.hpp"
 #include "RequestHeader.hpp"
 #include "UnixFD.hpp"
 #include "router.hpp"
@@ -109,48 +111,39 @@ void ClientHandler::onRequestError()
 	throw RequestFailedException();
 }
 
-void ClientHandler::checkAndRoute(RequestHeader &&header)
+std::unique_ptr<IRequestHandler> ClientHandler::createRequestHandler(RequestHeader &&header)
 {
-	// Find the matching server config to get clientMaxBodySize
 	const ServerConfig &serverConfig = findServerConfig(header, config);
+	responseStarted = false;
+	chunked = false;
+	bodyLen = 0;
+	// partialHeaderPending remains set until request framing is determined to
+	// prevent further request processing in case of framing error
+
+	// Determine message framing
+	TransferEncodingResult te = getTransferEncoding(header.fields);
+	ContentLengthResult cl = getContentLength(header.fields);
+	if (te.present && cl.present) // Both T-E and C-L specified? Might be malicious
+		return std::make_unique<ErrorRequestHandler>(*this, std::move(header), serverConfig, 400);
+	if (te.chunkedNotFinal) // Chunked is not final T-E, can't use it to detect end
+		return std::make_unique<ErrorRequestHandler>(*this, std::move(header), serverConfig, 400);
+	if (te.unknown) // Unsupported T-E value, don't know how to decode
+		return std::make_unique<ErrorRequestHandler>(*this, std::move(header), serverConfig, 501);
+	if (cl.invalid) // C-L does not parse cleanly, can't use it to detect end
+		return std::make_unique<ErrorRequestHandler>(*this, std::move(header), serverConfig, 400);
+	// Framing successfully determined
+	chunked = te.chunked;
+	bodyLen = cl.length;
+	partialHeaderPending = false;
+
+	// Early check for excess body size
 	bodyLenMax = serverConfig.clientMaxBodySize;
 	useBodyLenMax = bodyLenMax > 0;
-
-	// Check Content-Length against maxBodySize before processing
 	if (useBodyLenMax && bodyLen > bodyLenMax)
-	{
-		request = std::make_unique<ErrorRequestHandler>(*this, header, serverConfig, 413);
-		return;
-	}
+		return std::make_unique<ErrorRequestHandler>(*this, std::move(header), serverConfig, 413);
 
 	// Use router to select and create the appropriate handler
-	request = router(*this, header, serverConfig);
-}
-
-void ClientHandler::createRequestHandler(RequestHeader &&header)
-{
-	responseStarted = false;
-	partialHeaderPending = false;
-	// TODO: maybe process body length / mode within header parser?
-	std::string cl = header.get("content-length");
-	bodyLen = 0;
-	if (!cl.empty())
-		bodyLen = std::stoull(cl);
-
-	std::string te = header.get("transfer-encoding");
-	if (!te.empty())
-	{
-		// TODO: delete content-length if transfer-encoding exists
-		bodyLen = 0;
-		// TODO: incomplete check, doesn't parse value properly
-		if (te.find("chunked") != std::string::npos)
-			chunked = true;
-	}
-
-	requestDone = false;
-	checkAndRoute(std::move(header));
-	if (requestDone) // request completed during its construction
-		request = nullptr;
+	return router(*this, std::move(header), serverConfig);
 }
 
 void ClientHandler::handleDataRequestHeader()
@@ -160,7 +153,12 @@ void ClientHandler::handleDataRequestHeader()
 	// The reader will consume bytes until end of header
 	std::optional<RequestHeader> header = headerReader.tryParse(availableData);
 	if (header)
-		createRequestHandler(std::move(*header));
+	{
+		requestDone = false;
+		request = createRequestHandler(std::move(*header));
+		if (requestDone) // request completed during its construction
+			request = nullptr;
+	}
 }
 
 void ClientHandler::handleDataChunkHeader()
