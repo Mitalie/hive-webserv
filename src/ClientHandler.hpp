@@ -55,6 +55,7 @@ private:
 	void bufferedDataCallback();
 	void socketWriteCallback(size_t bufferSize);
 	bool clientEOF = false;
+	bool writingResponse = false;
 	void updateWakeup();
 	void setupMainLoopCallback();
 

@@ -63,7 +63,7 @@ ClientHandler::ClientHandler(const ListenerConfig &config, UnixFD &&fd)
 			{
 				clientEOF = true;
 				socket.stopReading();
-				updateWakeup();
+				bufferedDataCallback();
 			},
 			[this]()
 			{ throw TerminateClientException(this); }, // Handle Read Error
@@ -89,7 +89,9 @@ void ClientHandler::setReadingBody(bool reading)
 size_t ClientHandler::writeResponseData(std::span<const char> data)
 {
 	// TODO: implement max buffer size even if simple handlers don't?
-	return socket.queueWrite(data);
+	size_t newBufferSize = socket.queueWrite(data);
+	writingResponse = (newBufferSize > 0);
+	return newBufferSize;
 }
 
 void ClientHandler::onRequestDone()
@@ -248,8 +250,11 @@ void ClientHandler::bufferedDataCallback()
 
 void ClientHandler::socketWriteCallback(size_t bufferSize)
 {
+	if (bufferSize == 0)
+		writingResponse = false;
 	if (request)
 		request->notifyResponseBuffer(bufferSize);
+	updateWakeup();
 }
 
 /*
@@ -277,7 +282,7 @@ void ClientHandler::socketWriteCallback(size_t bufferSize)
 */
 void ClientHandler::updateWakeup()
 {
-	if (clientEOF && request == nullptr)
+	if (clientEOF && request == nullptr && !writingResponse)
 		throw TerminateClientException(this);
 	if (processingData)
 		// Still processing, we'll update wakeup when we stop
