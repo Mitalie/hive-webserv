@@ -41,7 +41,7 @@ TransferEncodingResult getTransferEncoding(const HeaderFields &header)
 		// For requests, chunked MUST be final transfer encoding
 		if (res.chunked)
 			res.chunkedNotFinal = true;
-		std::string encodingLower(toLower(std::string(encodings[0])));
+		std::string encodingLower(toLower(std::string(encoding)));
 		if (encodingLower == "chunked")
 			res.chunked = true;
 		else
