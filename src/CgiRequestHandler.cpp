@@ -72,6 +72,7 @@ void CgiRequestHandler::launchCgiProcess()
 				if (bufferSize < PIPE_WRITE_LOW_WATER_MARK)
 					manager_.setReadingBody(true);
 			},
+			// Ignore child closing std in pipe.
 			ReadWriteFD::WritableErrorCallback{});
 	}
 	catch (const std::exception &e)

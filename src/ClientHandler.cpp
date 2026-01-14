@@ -59,11 +59,18 @@ ClientHandler::ClientHandler(const ListenerConfig &config, UnixFD &&fd)
 		  std::move(fd),
 		  [this](std::span<const char> newData)
 		  { socketReadCallback(newData); },
-		  {}, // TODO: handle EOF
-		  {}, // TODO: handle read error
+		  [this]()
+		  {
+			  clientEOF = true;
+			  socket.stopReading();
+			  bufferedDataCallback();
+		  },
+		  [this]()
+		  { throw TerminateClientException(this); }, // Handle Read Error
 		  [this](size_t bufferSize)
 		  { socketWriteCallback(bufferSize); },
-		  {}) // TODO: handle write error
+		  [this]()
+		  { throw TerminateClientException(this); }) // Handle Write Error
 {
 	leftoverData.reserve(socket.maxReadSize);
 	updateWakeup();
@@ -82,7 +89,11 @@ void ClientHandler::setReadingBody(bool reading)
 size_t ClientHandler::writeResponseData(std::span<const char> data)
 {
 	// TODO: implement max buffer size even if simple handlers don't?
-	return socket.queueWrite(data);
+	size_t newBufferSize = socket.queueWrite(data);
+	writingResponse = (newBufferSize > 0);
+	if (!data.empty())
+		responseStarted = true;
+	return newBufferSize;
 }
 
 void ClientHandler::onRequestDone()
@@ -95,7 +106,7 @@ void ClientHandler::onRequestDone()
 
 void ClientHandler::onRequestError()
 {
-	throw TerminateClientException(this);
+	throw RequestFailedException();
 }
 
 void ClientHandler::checkAndRoute(RequestHeader &&header)
@@ -118,6 +129,8 @@ void ClientHandler::checkAndRoute(RequestHeader &&header)
 
 void ClientHandler::createRequestHandler(RequestHeader &&header)
 {
+	responseStarted = false;
+	partialHeaderPending = false;
 	// TODO: maybe process body length / mode within header parser?
 	std::string cl = header.get("content-length");
 	bodyLen = 0;
@@ -142,6 +155,8 @@ void ClientHandler::createRequestHandler(RequestHeader &&header)
 
 void ClientHandler::handleDataRequestHeader()
 {
+	if (!availableData.empty())
+		partialHeaderPending = true;
 	// The reader will consume bytes until end of header
 	std::optional<RequestHeader> header = headerReader.tryParse(availableData);
 	if (header)
@@ -166,9 +181,9 @@ void ClientHandler::handleDataChunkHeader()
 			// End of chunked body
 			chunked = false;
 
-			// 	// NEW: Signal handler that body is complete
-			// 	if (request)
-			// 		request->onBodyDone();
+			// Signal handler that body is complete
+			if (request)
+				request->onBodyDone();
 		}
 	}
 }
@@ -185,11 +200,11 @@ void ClientHandler::handleDataBody()
 	availableData = availableData.subspan(usableLen);
 	bodyLen -= usableLen;
 
-	// // NEW: Check if this was the last piece of a Content-Length body
-	// if (bodyLen == 0 && !chunked && request)
-	// {
-	// 	request->onBodyDone();
-	// }
+	// Check if this was the last piece of a Content-Length body
+	if (bodyLen == 0 && !chunked && request)
+	{
+		request->onBodyDone();
+	}
 }
 
 void ClientHandler::handleData()
@@ -209,10 +224,54 @@ void ClientHandler::handleData()
 	// No more data available, or request handler paused input
 }
 
+/*
+	Handling data processing and EOF cases:
+	- If a client disconnects while we are waiting for a body, we must
+	destroy the request handler to break the wait.
+	- If a client disconnects leaving incomplete headers or unconsumed
+	bytes we treat it as a Bad Request.
+
+	In both cases, we try to send a "400 Bad Request", but ONLY if we
+	haven't already started a response. This prevents corrupting the
+	stream(e.g. if a 404 header was already written)
+
+	Also acts as a safety net: if a handler throws RequestFailedException,
+	we catch it here to destroy the request but keep the connection alive
+	long enough to flush the error response.
+
+	- When an error response is queued (either here or by the handler),
+	`writingResponse` becomes true. `updateWakeup` then refuses to close
+	the connection until `socketWriteCallback` confirms the buffer is fully
+	drained.
+
+	- The connection is strictly terminated in `updateWakeup` ONLY when
+	(clientEOF is true) AND (request is null) AND (buffer is empty).
+*/
 void ClientHandler::processData()
 {
 	processingData = true;
-	handleData();
+	try
+	{
+		handleData();
+	}
+	catch (const RequestFailedException &)
+	{
+		request = nullptr;
+	}
+
+	bool hasDeadlock = (request && !readingPaused);
+	bool hasPartialJunk = (!request && (partialHeaderPending || !availableData.empty() || !leftoverData.empty()));
+
+	if (clientEOF && (hasDeadlock || hasPartialJunk))
+	{
+		if (!responseStarted)
+		{
+			const char errorMsg[] = "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 0\r\n\r\n";
+			size_t newSize = socket.queueWrite(std::span<const char>(errorMsg, sizeof(errorMsg) - 1));
+			writingResponse = (newSize > 0);
+		}
+		request = nullptr;
+	}
 	processingData = false;
 	updateWakeup();
 }
@@ -241,8 +300,11 @@ void ClientHandler::bufferedDataCallback()
 
 void ClientHandler::socketWriteCallback(size_t bufferSize)
 {
+	if (bufferSize == 0)
+		writingResponse = false;
 	if (request)
 		request->notifyResponseBuffer(bufferSize);
+	updateWakeup();
 }
 
 /*
@@ -270,10 +332,12 @@ void ClientHandler::socketWriteCallback(size_t bufferSize)
 */
 void ClientHandler::updateWakeup()
 {
+	if (clientEOF && request == nullptr && !writingResponse)
+		throw TerminateClientException(this);
 	if (processingData)
 		// Still processing, we'll update wakeup when we stop
 		return;
-	if (readingPaused)
+	if (readingPaused || clientEOF)
 		// Request handler takes responsibility for wakeup
 		// No need to cancel pending callback, it will be a one-off and a no-op
 		socket.stopReading();
