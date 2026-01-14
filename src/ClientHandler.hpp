@@ -56,6 +56,8 @@ private:
 	void socketWriteCallback(size_t bufferSize);
 	bool clientEOF = false;
 	bool writingResponse = false;
+	bool responseStarted = false;
+	bool partialHeaderPending = false;
 	void updateWakeup();
 	void setupMainLoopCallback();
 
@@ -87,4 +89,5 @@ private:
 	private:
 		ClientHandler *handler;
 	};
+	class RequestFailedException : public std::exception {};
 };

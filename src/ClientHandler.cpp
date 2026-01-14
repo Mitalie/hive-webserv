@@ -91,6 +91,8 @@ size_t ClientHandler::writeResponseData(std::span<const char> data)
 	// TODO: implement max buffer size even if simple handlers don't?
 	size_t newBufferSize = socket.queueWrite(data);
 	writingResponse = (newBufferSize > 0);
+	if (!data.empty())
+		responseStarted = true;
 	return newBufferSize;
 }
 
@@ -104,7 +106,7 @@ void ClientHandler::onRequestDone()
 
 void ClientHandler::onRequestError()
 {
-	throw TerminateClientException(this);
+	throw RequestFailedException();
 }
 
 void ClientHandler::checkAndRoute(RequestHeader &&header)
@@ -127,6 +129,8 @@ void ClientHandler::checkAndRoute(RequestHeader &&header)
 
 void ClientHandler::createRequestHandler(RequestHeader &&header)
 {
+	responseStarted = false;
+	partialHeaderPending = false;
 	// TODO: maybe process body length / mode within header parser?
 	std::string cl = header.get("content-length");
 	bodyLen = 0;
@@ -151,6 +155,8 @@ void ClientHandler::createRequestHandler(RequestHeader &&header)
 
 void ClientHandler::handleDataRequestHeader()
 {
+	if (!availableData.empty())
+		partialHeaderPending = true;
 	// The reader will consume bytes until end of header
 	std::optional<RequestHeader> header = headerReader.tryParse(availableData);
 	if (header)
@@ -221,7 +227,28 @@ void ClientHandler::handleData()
 void ClientHandler::processData()
 {
 	processingData = true;
-	handleData();
+	try
+	{
+		handleData();
+	}
+	catch (const RequestFailedException &)
+	{
+		request = nullptr;
+	}
+
+	bool hasDeadlock = (request && !readingPaused);
+	bool hasPartialJunk = (!request &&  (partialHeaderPending || !availableData.empty() || !leftoverData.empty()));
+
+	if (clientEOF && (hasDeadlock || hasPartialJunk))
+	{
+		if (!responseStarted)
+		{
+			const char errorMsg[] = "HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 0\r\n\r\n";
+			size_t newSize = socket.queueWrite(std::span<const char>(errorMsg, sizeof(errorMsg) - 1));
+			writingResponse = (newSize > 0);
+		}
+		request = nullptr;
+	}
 	processingData = false;
 	updateWakeup();
 }
