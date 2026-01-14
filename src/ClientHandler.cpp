@@ -1,4 +1,5 @@
 #include "ClientHandler.hpp"
+
 #include <algorithm>
 #include <cctype>
 #include <cstddef>
@@ -56,21 +57,21 @@ static const ServerConfig &findServerConfig(const RequestHeader &header, const L
 ClientHandler::ClientHandler(const ListenerConfig &config, UnixFD &&fd)
 	: config(config),
 	  socket(
-			std::move(fd),
-			[this](std::span<const char> newData)
-			{ socketReadCallback(newData); },
-			[this]()
-			{
-				clientEOF = true;
-				socket.stopReading();
-				bufferedDataCallback();
-			},
-			[this]()
-			{ throw TerminateClientException(this); }, // Handle Read Error
-			[this](size_t bufferSize)
-			{ socketWriteCallback(bufferSize); },
-			[this]()
-			{ throw TerminateClientException(this); }) // Handle Write Error
+		  std::move(fd),
+		  [this](std::span<const char> newData)
+		  { socketReadCallback(newData); },
+		  [this]()
+		  {
+			  clientEOF = true;
+			  socket.stopReading();
+			  bufferedDataCallback();
+		  },
+		  [this]()
+		  { throw TerminateClientException(this); }, // Handle Read Error
+		  [this](size_t bufferSize)
+		  { socketWriteCallback(bufferSize); },
+		  [this]()
+		  { throw TerminateClientException(this); }) // Handle Write Error
 {
 	leftoverData.reserve(socket.maxReadSize);
 	updateWakeup();
@@ -224,6 +225,29 @@ void ClientHandler::handleData()
 	// No more data available, or request handler paused input
 }
 
+/*
+	Handling data processing and EOF cases:
+	- If a client disconnects while we are waiting for a body, we must
+	destroy the request handler to break the wait.
+	- If a client disconnects leaving incomplete headers or unconsumed
+	bytes we treat it as a Bad Request.
+
+	In both cases, we try to send a "400 Bad Request", but ONLY if we
+	haven't already started a response. This prevents corrupting the
+	stream(e.g. if a 404 header was already written)
+
+	Also acts as a safety net: if a handler throws RequestFailedException,
+	we catch it here to destroy the request but keep the connection alive
+	long enough to flush the error response.
+
+	- When an error response is queued (either here or by the handler),
+	`writingResponse` becomes true. `updateWakeup` then refuses to close
+	the connection until `socketWriteCallback` confirms the buffer is fully
+	drained.
+
+	- The connection is strictly terminated in `updateWakeup` ONLY when
+	(clientEOF is true) AND (request is null) AND (buffer is empty).
+*/
 void ClientHandler::processData()
 {
 	processingData = true;
@@ -237,7 +261,7 @@ void ClientHandler::processData()
 	}
 
 	bool hasDeadlock = (request && !readingPaused);
-	bool hasPartialJunk = (!request &&  (partialHeaderPending || !availableData.empty() || !leftoverData.empty()));
+	bool hasPartialJunk = (!request && (partialHeaderPending || !availableData.empty() || !leftoverData.empty()));
 
 	if (clientEOF && (hasDeadlock || hasPartialJunk))
 	{
