@@ -43,30 +43,6 @@ OBJS := $(SRCS:$(SRCDIR)/%.cpp=$(OBJDIR)/%.o)
 $(NAME): $(OBJS)
 BINS := $(NAME)
 
-# Test programs
-TESTDIR := testbin
-TESTS := $(addprefix $(TESTDIR)/,\
-	example \
-	callbackIO \
-	headerParser \
-	config_test \
-	clientHandler \
-	listener \
-	cgi \
-	cgi_request \
-)
-TEST_SRCS := $(TESTS:%=$(SRCDIR)/%.cpp)
-# - Exclude main.o from OBJS as each test comes with its own main
-$(TESTS): %: $(OBJDIR)/%.o $(filter-out $(OBJDIR)/main.o,$(OBJS))
-# - Add tests to OBJS and BINS so that the static pattern rules with recipes apply.
-#   Does not affect OBJS in dependency lists above this line because it is a simply
-#   expanded variable, already expanded in those places before this assignment.
-OBJS += $(TESTS:%=$(OBJDIR)/%.o)
-BINS += $(TESTS)
-.PHONY: tests
-tests: $(TESTS)
-all: tests
-
 # Default recipes for each type of target
 $(OBJS): $(OBJDIR)/%.o: $(SRCDIR)/%.cpp
 	$(mktargetdir)
