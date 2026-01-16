@@ -5,6 +5,12 @@
 #include "Config.hpp"
 #include "UnixFD.hpp"
 
+/*
+	A class to create a listening socket and accept connections from it.
+	The listening socket is created in constructor and closed on destruction.
+	The listening socket is monitored through Poll for incoming connections,
+	and accepted connections are passed to the `onAccept` callback.
+*/
 class Listener
 {
 public:
