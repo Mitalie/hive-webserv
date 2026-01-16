@@ -9,7 +9,6 @@
 #include <netdb.h>
 #include <sys/socket.h>
 
-#include "ClientHandler.hpp"
 #include "Config.hpp"
 
 struct AddrinfoDeleter
@@ -22,8 +21,8 @@ struct AddrinfoDeleter
 };
 using Addrinfo = std::unique_ptr<addrinfo, AddrinfoDeleter>;
 
-Listener::Listener(const HostPort &hostport, const ListenerConfig &config)
-	: config(config)
+Listener::Listener(const HostPort &hostport, AcceptCallback &&onAccept)
+	: onAccept(onAccept)
 {
 	addrinfo gaiHint{
 		.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV | AI_ADDRCONFIG | AI_PASSIVE,
@@ -73,6 +72,5 @@ void Listener::onReadable()
 	int connFd = accept(fd, (sockaddr *)&addr, &addrlen);
 	if (connFd < 0)
 		throw std::runtime_error(std::string("accept: ") + strerror(errno));
-	// TODO: manage ClientHandler lifecycle somehow
-	new ClientHandler(config, UnixFD(connFd));
+	onAccept(UnixFD(connFd));
 }

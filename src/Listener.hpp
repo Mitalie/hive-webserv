@@ -1,21 +1,23 @@
 #pragma once
 
+#include <functional>
+
 #include "Config.hpp"
 #include "UnixFD.hpp"
-
-class Poll;
 
 class Listener
 {
 public:
-	Listener(const HostPort &hostport, const ListenerConfig &config);
+	using AcceptCallback = std::function<void(UnixFD &&connFd)>;
+
+	Listener(const HostPort &hostport, AcceptCallback &&onAccept);
 	Listener(const Listener &other) = delete;
 	Listener(Listener &&other) = default;
 	Listener &operator=(const Listener &other) = delete;
 	~Listener();
 
 private:
-	const ListenerConfig &config;
+	AcceptCallback onAccept;
 	UnixFD fd;
 
 	// Max queue of unaccepted connections - see `man 2 listen`
