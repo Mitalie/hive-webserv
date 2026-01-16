@@ -41,4 +41,12 @@ public:
 		response or terminate the connection. The handler will be destroyed.
 	*/
 	virtual void onRequestError() = 0;
+
+	/*
+		Report a fatal error from an asynchronous context (e.g. CGI callback).
+		
+		This methdod does NOT throw. It schedules the request destruction for
+		the next main loop iteration. It is safe to call from any callback.
+	*/
+	virtual void onAsyncRequestError() = 0;
 };

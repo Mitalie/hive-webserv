@@ -54,6 +54,15 @@ public:
 	*/
 	size_t queueWrite(std::span<const char> data);
 
+	/*
+		Checks if the child process has exited.
+		Returns:
+			-1: Process still running.
+			0-255: Exit status code.
+			1: Terminated by signal.
+	*/
+	int	waitForExit();
+
 private:
 	void setupChild();
 	void cleanupPipes();
@@ -71,4 +80,6 @@ private:
 	pid_t pid;
 	int pipeIn[2];	// Server -> Script
 	int pipeOut[2]; // Script -> Server
+
+	bool reaped;
 };
