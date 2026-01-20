@@ -330,9 +330,9 @@ ClientHandler::TerminateClientException::TerminateClientException(ClientHandler 
 {
 }
 
-ClientHandler::TerminateClientException::~TerminateClientException()
+void ClientHandler::TerminateClientException::cleanup() const
 {
-	// When the exception object is destroyed, we should be out of any call
-	// stack that might still access the object.
+	// When this is called, the exception should have propagated out of any
+	// function that might still access the object.
 	delete handler;
 }

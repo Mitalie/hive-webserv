@@ -5,10 +5,10 @@
 #include <span>
 #include <vector>
 
-#include "AbortWorkException.hpp"
 #include "CallbackQueue.hpp"
 #include "ChunkHeaderReader.hpp"
 #include "Config.hpp"
+#include "DelayedCleanup.hpp"
 #include "RequestHeaderReader.hpp"
 #include "IRequestManager.hpp"
 #include "IRequestHandler.hpp"
@@ -82,13 +82,13 @@ private:
 	void handleDataRequestHeader();
 	void handleData();
 
-	class TerminateClientException : public AbortWorkException
+	class TerminateClientException : public DelayedCleanupBase
 	{
 	public:
 		TerminateClientException(ClientHandler *handler);
-		virtual ~TerminateClientException();
 
 	private:
 		ClientHandler *handler;
+		void cleanup() const override;
 	};
 };
