@@ -237,17 +237,12 @@ std::unique_ptr<IRequestHandler> handleRequestForRoute(
 }
 
 // =========================
-// Main Router Function
+// Route Matching Logic
 // =========================
-/**
- * Main router function. Finds the matching server and route, then delegates to the appropriate handler.
- */
-std::unique_ptr<IRequestHandler> router(IRequestManager &manager, const RequestHeader &header, const ServerConfig &server)
+const RouteConfig *matchRoute(const std::string &path, const ServerConfig &server)
 {
-	// Find the matching route (by request path prefix)
+	const std::string requestPath = stripQueryString(path);
 	// Assumes server.routes is sorted by descending path length
-	// Strip query string for route matching
-	const std::string requestPath = stripQueryString(header.path());
 	for (const RouteConfig &route : server.routes)
 	{
 		const std::string &routePath = route.path;
@@ -257,8 +252,15 @@ std::unique_ptr<IRequestHandler> router(IRequestManager &manager, const RequestH
 		if (requestPath.size() == routePath.size() ||
 			(route.isDirectoryRoute && requestPath[routePath.size()] == '/'))
 			// either exact match, or match up to slash in request URL
-			return handleRequestForRoute(manager, header, server, route);
+			return &route;
 	}
-	// No matching route found: return 404 handler
-	return std::make_unique<ErrorRequestHandler>(manager, header, server, 404);
+	return nullptr;
+}
+
+// =========================
+// Main Router Function
+// =========================
+std::unique_ptr<IRequestHandler> router(IRequestManager &manager, const RequestHeader &header, const ServerConfig &server, const RouteConfig &route)
+{
+	return handleRequestForRoute(manager, header, server, route);
 }

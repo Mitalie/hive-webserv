@@ -1,6 +1,7 @@
 #include "Config.hpp" // RouteConfig, ServerConfig, PortServerMap
 
 #include <algorithm> // std::sort
+#include <cstddef>
 #include <fstream>	 // std::ifstream
 #include <map>		 // std::map
 #include <stdexcept> // std::runtime_error
@@ -8,6 +9,25 @@
 #include <vector>	 // std::vector
 
 #include "Tokenizer.hpp"
+
+static size_t parseBodySize(Tokenizer &tokenizer)
+{
+	Token sizeToken = tokenizer.nextToken();
+	if (sizeToken.type != TokenType::String)
+		throw std::runtime_error("Malformed client_max_body_size statement: missing size");
+	try
+	{
+		return std::stoul(sizeToken.value);
+	}
+	catch (const std::invalid_argument &e)
+	{
+		throw std::runtime_error("Invalid value for client_max_body_size: '" + sizeToken.value + "' is not a valid number");
+	}
+	catch (const std::out_of_range &e)
+	{
+		throw std::runtime_error("Value for client_max_body_size out of range: '" + sizeToken.value + "'");
+	}
+}
 
 PortServerMap parseConfig(const std::string &filename)
 {
@@ -78,7 +98,7 @@ ServerConfig::ServerConfig(Tokenizer &tokenizer)
 			handleErrorPage(tokenizer);
 			break;
 		case ServerDirective::ClientMaxBodySize:
-			handleClientMaxBodySize(tokenizer);
+			clientMaxBodySize = parseBodySize(tokenizer);
 			break;
 		default:
 			throw std::runtime_error("ConfigParser: unknown directive '" + t.value + "' in server block");
@@ -147,25 +167,6 @@ void ServerConfig::handleErrorPage(Tokenizer &tokenizer)
 	}
 }
 
-void ServerConfig::handleClientMaxBodySize(Tokenizer &tokenizer)
-{
-	Token sizeToken = tokenizer.nextToken();
-	if (sizeToken.type != TokenType::String)
-		throw std::runtime_error("Malformed client_max_body_size statement: missing size");
-	try
-	{
-		clientMaxBodySize = std::stoul(sizeToken.value);
-	}
-	catch (const std::invalid_argument &e)
-	{
-		throw std::runtime_error("Invalid value for client_max_body_size: '" + sizeToken.value + "' is not a valid number");
-	}
-	catch (const std::out_of_range &e)
-	{
-		throw std::runtime_error("Value for client_max_body_size out of range: '" + sizeToken.value + "'");
-	}
-}
-
 RouteConfig::RouteConfig(Tokenizer &tokenizer)
 	: autoindex(false), redirectCode(0)
 {
@@ -216,6 +217,9 @@ RouteConfig::RouteConfig(Tokenizer &tokenizer)
 			continue; // methods ends with semicolon, handled inside
 		case LocationDirective::CgiExt:
 			handleLocationCgiExt(tokenizer);
+			break;
+		case LocationDirective::ClientMaxBodySize:
+			clientMaxBodySize = parseBodySize(tokenizer);
 			break;
 		default:
 			throw std::runtime_error("ConfigParser: unknown directive '" + t.value + "' in location block");

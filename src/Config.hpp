@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <unordered_map>
@@ -15,6 +16,7 @@ enum class LocationDirective
 	UploadStore,
 	Methods,
 	CgiExt,
+	ClientMaxBodySize,
 	Unknown
 };
 
@@ -25,7 +27,8 @@ inline const std::unordered_map<std::string, LocationDirective> locationDirectiv
 	{"autoindex", LocationDirective::Autoindex},
 	{"upload_store", LocationDirective::UploadStore},
 	{"methods", LocationDirective::Methods},
-	{"cgi_ext", LocationDirective::CgiExt}};
+	{"cgi_ext", LocationDirective::CgiExt},
+	{"client_max_body_size", LocationDirective::ClientMaxBodySize}};
 
 enum class ServerDirective
 {
@@ -57,6 +60,7 @@ struct RouteConfig
 	std::map<std::string, std::string> cgiInterpreters; // File extension -> interpreter path
 	std::string uploadStore;							// Directory for uploaded files
 	bool isDirectoryRoute;
+	std::optional<size_t> clientMaxBodySize;
 	void handleLocationRedirect(class Tokenizer &tokenizer);
 	void handleLocationRoot(class Tokenizer &tokenizer);
 	void handleLocationIndex(class Tokenizer &tokenizer);
@@ -88,7 +92,6 @@ struct ServerConfig
 	void handleListen(class Tokenizer &tokenizer);
 	void handleServerName(class Tokenizer &tokenizer);
 	void handleErrorPage(class Tokenizer &tokenizer);
-	void handleClientMaxBodySize(class Tokenizer &tokenizer);
 };
 
 typedef std::vector<ServerConfig> ListenerConfig;
