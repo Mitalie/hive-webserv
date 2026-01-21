@@ -36,6 +36,7 @@ SRCS := $(addprefix $(SRCDIR)/,\
 	AutoindexRequestHandler.cpp \
 	DeleteRequestHandler.cpp \
 	Utils.cpp \
+	MimeTypes.cpp \
 )
 
 # Project targets
