@@ -9,7 +9,6 @@
 #include <netdb.h>
 #include <sys/socket.h>
 
-#include "ClientHandler.hpp"
 #include "Config.hpp"
 
 struct AddrinfoDeleter
@@ -20,11 +19,15 @@ struct AddrinfoDeleter
 			freeaddrinfo(p);
 	}
 };
+// Use std::unique_ptr with custom deleter to manage getaddrinfo results
 using Addrinfo = std::unique_ptr<addrinfo, AddrinfoDeleter>;
 
-Listener::Listener(const HostPort &hostport, const ListenerConfig &config)
-	: config(config)
+Listener::Listener(const HostPort &hostport, AcceptCallback &&onAccept)
+	: onAccept(onAccept)
 {
+	// Use getaddrinfo to parse the host and port strings from config, then
+	// create the socket, bind it to address/port, and set it to listen mode.
+	// Any errors here are considered fatal.
 	addrinfo gaiHint{
 		.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV | AI_ADDRCONFIG | AI_PASSIVE,
 		.ai_family = AF_UNSPEC,
@@ -43,6 +46,9 @@ Listener::Listener(const HostPort &hostport, const ListenerConfig &config)
 	fd = UnixFD(socket(gaiRes->ai_family, gaiRes->ai_socktype, gaiRes->ai_protocol));
 	if (fd < 0)
 		throw std::runtime_error(std::string("socket: ") + strerror(errno));
+	// Set SO_REUSEADDR to allow server to start even if there are connections
+	// (but not listeners) with the same local addr/port. This allows restarting
+	// the server even if previous client connections remain in TIME-WAIT state.
 	int value = 1;
 	int ssoErr = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &value, sizeof(value));
 	if (ssoErr)
@@ -56,9 +62,12 @@ Listener::Listener(const HostPort &hostport, const ListenerConfig &config)
 	fd.addToPoll(
 		[this]()
 		{ onReadable(); },
-		{}, // listening socket is never writable
+		// Listening socket is never writable
+		{},
+		// Does POLLERR ever happen for listening socket?
+		// If it does, we probably should consider it fatal.
 		[]()
-		{ throw std::runtime_error("Listener socket error"); });
+		{ throw std::runtime_error("Listener socket in error state"); });
 	fd.setReadableInterest(true);
 }
 
@@ -68,11 +77,10 @@ Listener::~Listener()
 
 void Listener::onReadable()
 {
-	sockaddr_storage addr;
-	socklen_t addrlen = sizeof(addr);
-	int connFd = accept(fd, (sockaddr *)&addr, &addrlen);
+	int connFd = accept(fd, nullptr, nullptr);
+	// Assume that any errors from accept are transient and/or remove the failed
+	// connection from the queue. Just wait for another onReadable callback.
 	if (connFd < 0)
-		throw std::runtime_error(std::string("accept: ") + strerror(errno));
-	// TODO: manage ClientHandler lifecycle somehow
-	new ClientHandler(config, UnixFD(connFd));
+		return;
+	onAccept(UnixFD(connFd));
 }
