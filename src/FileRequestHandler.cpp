@@ -1,4 +1,5 @@
 #include "FileRequestHandler.hpp"
+#include "MimeTypes.hpp"
 
 #include <cstddef>
 #include <span>
@@ -77,7 +78,7 @@ void FileRequestHandler::start(const char *filePath)
 	bytesRemaining_ = st.st_size;
 	std::string header =
 		"HTTP/1.1 200 OK\r\n"
-		"Content-Type: application/octet-stream\r\n"
+		"Content-Type: " + MimeTypes::getType(filePath) + "\r\n"
 		"Content-Length: " +
 		std::to_string(st.st_size) +
 		"\r\n\r\n";
