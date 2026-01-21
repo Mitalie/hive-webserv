@@ -200,7 +200,7 @@ std::unique_ptr<IRequestHandler> handleRequestForRoute(
 			else
 			{
 				// No index file and autoindex disabled
-				return std::make_unique<ErrorRequestHandler>(manager, header, server, 403); // Forbidden
+				return std::make_unique<ErrorRequestHandler>(manager, header, server, 404); // Forbidden
 			}
 		}
 		else if (route.autoindex)
