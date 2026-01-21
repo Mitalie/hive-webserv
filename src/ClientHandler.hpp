@@ -40,7 +40,6 @@ public:
 	virtual size_t writeResponseData(std::span<const char> data) override;
 	virtual void onRequestDone() override;
 	virtual void onRequestError() override;
-	virtual void onAsyncRequestError() override;
 
 private:
 	const ListenerConfig &config;

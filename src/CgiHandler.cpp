@@ -102,7 +102,7 @@ CgiHandler::~CgiHandler()
 	cleanupPipes();
 
 	// Reap zombie process if necessary
-	if (pid > 0 && !reaped)
+	if (pid > 0)
 	{
 		int status;
 		pid_t res = waitpid(pid, &status, WNOHANG);
@@ -131,28 +131,6 @@ size_t CgiHandler::queueWrite(std::span<const char> data)
 {
 	if (stdinStream)
 		return stdinStream->queueWrite(data);
-	return 0;
-}
-
-int CgiHandler::waitForExit()
-{
-	if (pid <= 0 || reaped)
-		return 0;
-
-	int status;
-	pid_t res = waitpid(pid, &status, WNOHANG);
-
-	if (res == 0)
-		return -1;
-
-	if (res == pid)
-	{
-		reaped = true;
-		if (WIFEXITED(status))
-			return WEXITSTATUS(status);
-		if (WIFSIGNALED(status))
-			return -1;
-	}
 	return 0;
 }
 

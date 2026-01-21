@@ -111,30 +111,6 @@ void ClientHandler::onRequestError()
 	throw RequestFailedException();
 }
 
-void ClientHandler::onAsyncRequestError()
-{
-	// Queue a callback to perform the cleanup.
-	// This ensures we don't delete the request object while one of its
-	// member functions (like handleCgiEof) is still on the call stack.
-	cbOwner.queueCallback(
-		[this]()
-		{
-			if (!responseStarted && !clientEOF)
-			{
-				const char errorMsg[] = "HTTP/1.1 502 Bad Gateway\r\nConnection: close\r\nContent-length: 0\r\n\r\n";
-				size_t newSize = socket.queueWrite(std::span<const char>(errorMsg, sizeof(errorMsg) - 1));
-				writingResponse = (newSize > 0);
-			}
-			else
-			{
-				clientEOF = true;
-			}
-
-			request = nullptr;
-			updateWakeup();
-		});
-}
-
 std::unique_ptr<IRequestHandler> ClientHandler::createRequestHandler(RequestHeader &&header)
 {
 	const ServerConfig &serverConfig = findServerConfig(header, config);

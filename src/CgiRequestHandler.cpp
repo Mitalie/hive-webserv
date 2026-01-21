@@ -126,35 +126,23 @@ void CgiRequestHandler::sendBodyData(std::span<const char> data)
 
 void CgiRequestHandler::handleCgiEof()
 {
-	// 1. Check exit status
-	int exitcode = cgiHandler_->waitForExit();
-	bool scriptFailed = (exitcode > 0);
-
-	// 2. No headers sent yet
+	// 1. No headers sent yet
 	if (!headersParsed_)
 	{
-		std::cerr << "[CGI] Error: Premature EOF before headers (Exit: " << exitcode << ")" << std::endl;
-		manager_.onAsyncRequestError();
+		std::cerr << "[CGI] Error: Premature EOF before headers" << std::endl;
+		// TODO call on request error once it supports error request messages
 		return;
 	}
 
-	// 3. Content-length mismatch
+	// 2. Content-length mismatch
 	if (!useChunkedEncoding_ && remainingResponseContentLength_ > 0)
 	{
-		std::cerr << "[CGI] Error: Missing " << remainingResponseContentLength_ << " bytes (Exit: " << exitcode << ")" << std::endl;
-		manager_.onAsyncRequestError();
+		std::cerr << "[CGI] Error: Missing " << remainingResponseContentLength_ << " bytes" << std::endl;
+		// TODO call on request error once it supports error request messages
 		return;
 	}
 
-	// 4. Script error during chunking
-	if (scriptFailed)
-	{
-		std::cerr << "[CGI] Error: Script exited with error " << exitcode << std::endl;
-		manager_.onAsyncRequestError();
-		return;
-	}
-	
-	// 5. Success
+	// 3. Success
 	if (useChunkedEncoding_)
 	{
 		manager_.writeResponseData(std::string_view("0\r\n\r\n"));
