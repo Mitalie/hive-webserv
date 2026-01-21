@@ -165,13 +165,8 @@ void ClientHandler::handleDataChunkHeader()
 		bodyLenMax -= bodyLen;
 
 		if (bodyLen == 0)
-		{
 			// End of chunked body
 			chunked = false;
-			if (request)
-				handleDelayedCleanup<TerminateRequestException>(
-					&IRequestHandler::onBodyDone, request);
-		}
 	}
 }
 
@@ -186,16 +181,11 @@ void ClientHandler::handleDataBody()
 	if (request)
 		handleDelayedCleanup<TerminateRequestException>(
 			&IRequestHandler::onBodyData, request, bodyData);
-
-	// End of Content-Length body
-	if (bodyLen == 0 && !chunked && request)
-		handleDelayedCleanup<TerminateRequestException>(
-			&IRequestHandler::onBodyDone, request);
 }
 
 void ClientHandler::handleData()
 {
-	while (!availableData.empty() && !readingPaused)
+	while (!availableData.empty() && !readingPaused && !isBodyDone())
 	{
 		if (bodyLen)
 			// Next byte(s) are body data
@@ -203,11 +193,21 @@ void ClientHandler::handleData()
 		else if (chunked)
 			// Next byte(s) are chunk header
 			handleDataChunkHeader();
-		else
-			// Next bytes are request header
+		else if (!request)
+			// Next byte(s) are request header, and we're ready for a new request
 			handleDataRequestHeader();
+
+		if (isBodyDone())
+			// Inform handler that no more body data is coming
+			// This is only runs once because of the loop condition
+			handleDelayedCleanup<TerminateRequestException>(
+				&IRequestHandler::onBodyDone, request);
 	}
-	// No more data available, or request handler paused input
+}
+
+bool ClientHandler::isBodyDone()
+{
+	return (request && !bodyLen && !chunked);
 }
 
 void ClientHandler::processData()
@@ -296,8 +296,8 @@ void ClientHandler::updateWakeup()
 		// terminate and for finished responses to send.
 		socket.stopReading();
 	}
-	else if (readingPaused)
-		// Request handler takes responsibility for wakeup
+	else if (readingPaused || isBodyDone())
+		// Wait for request handler to unpause or finish through its own wakeup
 		// No need to cancel pending callback, it will be a one-off and a no-op
 		socket.stopReading();
 	else if (availableData.empty())

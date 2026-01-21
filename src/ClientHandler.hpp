@@ -60,7 +60,6 @@ private:
 	void socketEofCallback();
 	void bufferedDataCallback();
 	void socketWriteCallback(size_t bufferSize);
-	bool partialHeaderPending = false;
 	void updateWakeup();
 	void setupMainLoopCallback();
 
@@ -69,6 +68,7 @@ private:
 	ChunkHeaderReader chunkHeaderReader;
 	RequestHeaderReader headerReader;
 	std::unique_ptr<IRequestHandler> request;
+	bool partialHeaderPending = false;
 	bool readingPaused = false;
 	bool chunked = false;
 	bool useBodyLenMax = false;
@@ -79,6 +79,7 @@ private:
 	void handleDataChunkHeader();
 	void handleDataRequestHeader();
 	void handleData();
+	bool isBodyDone();
 	void terminateRequest(std::optional<int> errorStatus);
 
 	class TerminateClientException : public DelayedCleanupBase
