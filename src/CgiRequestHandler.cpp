@@ -126,8 +126,24 @@ void CgiRequestHandler::sendBodyData(std::span<const char> data)
 
 void CgiRequestHandler::handleCgiEof()
 {
-	// If using chunked encoding, send final chunk
-	if (headersParsed_ && useChunkedEncoding_)
+	// 1. No headers sent yet
+	if (!headersParsed_)
+	{
+		std::cerr << "[CGI] Error: Premature EOF before headers" << std::endl;
+		// TODO call on request error once it supports error request messages
+		return;
+	}
+
+	// 2. Content-length mismatch
+	if (!useChunkedEncoding_ && remainingResponseContentLength_ > 0)
+	{
+		std::cerr << "[CGI] Error: Missing " << remainingResponseContentLength_ << " bytes" << std::endl;
+		// TODO call on request error once it supports error request messages
+		return;
+	}
+
+	// 3. Success
+	if (useChunkedEncoding_)
 	{
 		manager_.writeResponseData(std::string_view("0\r\n\r\n"));
 	}
