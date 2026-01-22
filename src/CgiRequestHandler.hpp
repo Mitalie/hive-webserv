@@ -21,8 +21,8 @@
 class CgiRequestHandler : public IRequestHandler
 {
 public:
-	CgiRequestHandler(IRequestManager &manager, const RequestHeader &header, const RouteConfig &route);
-	~CgiRequestHandler();
+	CgiRequestHandler(IRequestManager &manager, const RequestHeader &header, const RouteConfig &route, const std::string &scriptPath);
+    ~CgiRequestHandler();
 
 	void onBodyData(std::span<const char> data) override;
 	void onBodyDone() override;

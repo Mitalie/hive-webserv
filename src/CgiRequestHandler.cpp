@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdio>
 #include <exception>
+#include <filesystem>
 #include <iostream>
 #include <memory>
 #include <span>
@@ -18,32 +19,31 @@
 #include "ReadWriteFD.hpp"
 #include "RequestHeader.hpp"
 
-CgiRequestHandler::CgiRequestHandler(IRequestManager &manager, const RequestHeader &header, const RouteConfig &route)
-	: manager_(manager),
-	  storedHeader_(header),
-	  startTime_(std::chrono::steady_clock::now())
+CgiRequestHandler::CgiRequestHandler(IRequestManager &manager, const RequestHeader &header, const RouteConfig &route, const std::string &scriptPath)
+    : manager_(manager),
+      storedHeader_(header),
+      startTime_(std::chrono::steady_clock::now())
 {
-	// Determine script path and interpreter
-	scriptPath_ = route.root + header.path();
-	interpreter_ = findInterpreter(scriptPath_, route);
+    // Determine script path and interpreter
+    interpreter_ = findInterpreter(scriptPath_, route);
 
-	if (interpreter_.empty())
-	{
-		manager_.onRequestError();
-		return;
-	}
+    if (interpreter_.empty())
+    {
+        manager_.onRequestError();
+        return;
+    }
 
-	// Check if client is using chunked transfer encoding
-	std::string te = header.get("transfer-encoding");
-	if (te.find("chunked") != std::string::npos)
-	{
-		// Defer CGI launch until we have the full body
-		bufferingRequestBody_ = true;
-		return;
-	}
+    // Check if client is using chunked transfer encoding
+    std::string te = header.get("transfer-encoding");
+    if (te.find("chunked") != std::string::npos)
+    {
+        // Defer CGI launch until we have the full body
+        bufferingRequestBody_ = true;
+        return;
+    }
 
-	// No chunked encoding, launch CGI immediately
-	launchCgiProcess();
+    // No chunked encoding, launch CGI immediately
+    launchCgiProcess();
 }
 
 void CgiRequestHandler::launchCgiProcess()
