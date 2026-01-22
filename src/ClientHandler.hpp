@@ -52,13 +52,14 @@ private:
 	std::span<const char> availableData;
 	bool bufferedDataCallbackPending = false;
 	bool processingData = false;
+	bool terminateConnection = false;
+	size_t unfinishedResponseBytes = 0;
+	size_t bufferedResponseBytes = 0;
 	void processData();
 	void socketReadCallback(std::span<const char> newData);
+	void socketEofCallback();
 	void bufferedDataCallback();
 	void socketWriteCallback(size_t bufferSize);
-	bool clientEOF = false;
-	bool writingResponse = false;
-	bool responseStarted = false;
 	bool partialHeaderPending = false;
 	void updateWakeup();
 	void setupMainLoopCallback();
@@ -90,5 +91,4 @@ private:
 	private:
 		ClientHandler *handler;
 	};
-	class RequestFailedException : public std::exception {};
 };
