@@ -36,9 +36,12 @@ public:
 	virtual void onRequestDone() = 0;
 
 	/*
-		Report that the request handler has encountered a fatal error and cannot
-		produce a valid response. The manager will either produce an error
-		response or terminate the connection. The handler will be destroyed.
+		Report that the request handler has encountered an error and is unable
+		to provide a response or wants to delegate to a generic error handler.
+		The manager will either produce an error response or terminate the
+		connection. The handler will be destroyed.
+
+		`errorStatus` defaults to HTTP 500 Internal Server Error.
 	*/
-	virtual void onRequestError() = 0;
+	virtual void onRequestError(int errorStatus = 500) = 0;
 };

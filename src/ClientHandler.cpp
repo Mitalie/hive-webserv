@@ -10,6 +10,7 @@
 #include <utility>
 
 #include "Config.hpp"
+#include "DelayedCleanup.hpp"
 #include "ErrorRequestHandler.hpp"
 #include "HeaderUtil.hpp"
 #include "IRequestHandler.hpp"
@@ -93,17 +94,12 @@ size_t ClientHandler::writeResponseData(std::span<const char> data)
 
 void ClientHandler::onRequestDone()
 {
-	request = nullptr;
-	requestDone = true;
-	readingPaused = false;
-	unfinishedResponseBytes = 0;
-	updateWakeup();
+	throw TerminateRequestException(*this);
 }
 
-void ClientHandler::onRequestError()
+void ClientHandler::onRequestError(int errorStatus)
 {
-	// TODO: terminate only current handler, send error response
-	throw TerminateClientException(this);
+	throw TerminateRequestException(*this, errorStatus);
 }
 
 std::unique_ptr<IRequestHandler> ClientHandler::createRequestHandler(RequestHeader &&header)
@@ -147,12 +143,12 @@ void ClientHandler::handleDataRequestHeader()
 	// The reader will consume bytes until end of header
 	std::optional<RequestHeader> header = headerReader.tryParse(availableData);
 	if (header)
-	{
-		requestDone = false;
-		request = createRequestHandler(std::move(*header));
-		if (requestDone) // request completed during its construction
-			request = nullptr;
-	}
+		// Request handler constructors may throw TerminateRequestException, catch it here
+		handleDelayedCleanup<TerminateRequestException>(
+			[this, &header]
+			{
+				request = createRequestHandler(std::move(*header));
+			});
 }
 
 void ClientHandler::handleDataChunkHeader()
@@ -165,38 +161,36 @@ void ClientHandler::handleDataChunkHeader()
 
 		// Check if this chunk would exceed maxBodySize
 		if (useBodyLenMax && bodyLen > bodyLenMax)
-			onRequestError();
+			return terminateRequest(413);
 		bodyLenMax -= bodyLen;
 
 		if (bodyLen == 0)
 		{
 			// End of chunked body
 			chunked = false;
-
-			// Signal handler that body is complete
 			if (request)
-				request->onBodyDone();
+				handleDelayedCleanup<TerminateRequestException>(
+					&IRequestHandler::onBodyDone, request);
 		}
 	}
 }
 
 void ClientHandler::handleDataBody()
 {
+	// Consume body bytes even if request handler has already terminated
 	size_t usableLen = std::min(bodyLen, availableData.size());
-
-	if (request)
-		request->onBodyData(availableData.subspan(0, usableLen));
-
-	// If there is no current handler, the previous one completed without
-	// waiting for entire body. Consume the body bytes either way.
+	std::span<const char> bodyData = availableData.subspan(0, usableLen);
 	availableData = availableData.subspan(usableLen);
 	bodyLen -= usableLen;
 
-	// Check if this was the last piece of a Content-Length body
+	if (request)
+		handleDelayedCleanup<TerminateRequestException>(
+			&IRequestHandler::onBodyData, request, bodyData);
+
+	// End of Content-Length body
 	if (bodyLen == 0 && !chunked && request)
-	{
-		request->onBodyDone();
-	}
+		handleDelayedCleanup<TerminateRequestException>(
+			&IRequestHandler::onBodyDone, request);
 }
 
 void ClientHandler::handleData()
@@ -242,8 +236,7 @@ void ClientHandler::socketEofCallback()
 	terminateConnection = true;
 	if (bodyLen > 0 || chunked || partialHeaderPending)
 		// EOF received in the middle of a request
-		// TODO: respond with 400 Bad Request
-		request = nullptr;
+		terminateRequest(400);
 	updateWakeup();
 }
 
@@ -260,7 +253,8 @@ void ClientHandler::socketWriteCallback(size_t bufferSize)
 {
 	bufferedResponseBytes = bufferSize;
 	if (request)
-		request->notifyResponseBuffer(bufferSize);
+		handleDelayedCleanup<TerminateRequestException>(
+			&IRequestHandler::notifyResponseBuffer, request, bufferSize);
 	updateWakeup();
 }
 
@@ -335,4 +329,38 @@ void ClientHandler::TerminateClientException::cleanup() const
 	// When this is called, the exception should have propagated out of any
 	// function that might still access the object.
 	delete handler;
+}
+
+ClientHandler::TerminateRequestException::TerminateRequestException(ClientHandler &handler, std::optional<int> errorStatus)
+	: handler(handler), errorStatus(errorStatus)
+{
+}
+
+void ClientHandler::TerminateRequestException::cleanup() const
+{
+	handler.terminateRequest(errorStatus);
+}
+
+void ClientHandler::terminateRequest(std::optional<int> errorStatus)
+{
+	request = nullptr;
+	if (!errorStatus)
+	{
+		// Request handler completed successfully
+		readingPaused = false;
+		unfinishedResponseBytes = 0;
+	}
+	else if (unfinishedResponseBytes == 0)
+	{
+		// Request handler failed without output, send error response instead
+		// TODO construct ErrorRequestHandler or write response manually?
+	}
+	else
+	{
+		// Request handler failed with output
+		// The unfinished output makes the connection unusable, so just wait
+		// for any finished responses to drain and then terminate connection.
+		terminateConnection = true;
+	}
+	updateWakeup();
 }

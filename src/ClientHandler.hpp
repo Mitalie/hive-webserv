@@ -39,7 +39,7 @@ public:
 	virtual void setReadingBody(bool reading) override;
 	virtual size_t writeResponseData(std::span<const char> data) override;
 	virtual void onRequestDone() override;
-	virtual void onRequestError() override;
+	virtual void onRequestError(int errorStatus) override;
 
 private:
 	const ListenerConfig &config;
@@ -69,8 +69,6 @@ private:
 	ChunkHeaderReader chunkHeaderReader;
 	RequestHeaderReader headerReader;
 	std::unique_ptr<IRequestHandler> request;
-	// Keep track of completed request even if request ptr wasn't set yet
-	bool requestDone = false;
 	bool readingPaused = false;
 	bool chunked = false;
 	bool useBodyLenMax = false;
@@ -81,6 +79,7 @@ private:
 	void handleDataChunkHeader();
 	void handleDataRequestHeader();
 	void handleData();
+	void terminateRequest(std::optional<int> errorStatus);
 
 	class TerminateClientException : public DelayedCleanupBase
 	{
@@ -89,6 +88,17 @@ private:
 
 	private:
 		ClientHandler *handler;
+		void cleanup() const override;
+	};
+
+	class TerminateRequestException : public DelayedCleanupBase
+	{
+	public:
+		TerminateRequestException(ClientHandler &handler, std::optional<int> errorStatus = std::nullopt);
+
+	private:
+		ClientHandler &handler;
+		std::optional<int> errorStatus;
 		void cleanup() const override;
 	};
 };
