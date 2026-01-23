@@ -15,12 +15,15 @@
 typedef std::unique_ptr<IRequestHandler> RequestHandlerPtr;
 
 /**
- * Finds the matching route configuration for a given path.
+ * Finds the matching route configuration for a given path and method.
+ * Prioritizes routes that match both path and method.
+ *
  * @param path The request path.
+ * @param method The HTTP method (GET, POST, etc.).
  * @param config The server configuration.
  * @return A pointer to the matching RouteConfig, or nullptr if no match found.
  */
-const RouteConfig *matchRoute(const std::string &path, const ServerConfig &config);
+const RouteConfig *matchRoute(const std::string &path, const std::string &method, const ServerConfig &config);
 
 /**
  * Main router function. Selects the appropriate route, then returns the correct handler.

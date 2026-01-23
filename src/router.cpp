@@ -253,22 +253,44 @@ std::unique_ptr<IRequestHandler> handleRequestForRoute(
 // =========================
 // Route Matching Logic
 // =========================
-const RouteConfig *matchRoute(const std::string &path, const ServerConfig &server)
+const RouteConfig *matchRoute(const std::string &path, const std::string &method, const ServerConfig &server)
 {
 	const std::string requestPath = stripQueryString(path);
+	const RouteConfig *candidate = nullptr;
+
 	// Assumes server.routes is sorted by descending path length
 	for (const RouteConfig &route : server.routes)
 	{
 		const std::string &routePath = route.path;
+
+		// 1. Check Prefix Match
 		if (requestPath.compare(0, routePath.size(), routePath) != 0)
-			// request is not under this route
 			continue;
-		if (requestPath.size() == routePath.size() ||
-			(route.isDirectoryRoute && requestPath[routePath.size()] == '/'))
-			// either exact match, or match up to slash in request URL
+
+		// 2. Check Directory Boundary (e.g., prevent /foo matching /foobar)
+		if (requestPath.size() != routePath.size() &&
+			(!route.isDirectoryRoute || requestPath[routePath.size()] != '/'))
+			continue;
+
+		// 3. Check "Best Match" logic
+		
+		// If we already have a candidate, and this new match is shorter (less specific),
+		// we stop looking. The previous candidate is the best we will find (even if method didn't match).
+		if (candidate && routePath.size() < candidate->path.size())
+			return candidate;
+
+		// If method matches, this is the perfect route. Return immediately.
+		if (isMethodAllowed(method, route.allowedMethods))
 			return &route;
+
+		// If method didn't match, store as a candidate (fallback).
+		// We keep looking in case there is another route with the SAME path length
+		// that DOES support the method.
+		if (!candidate)
+			candidate = &route;
 	}
-	return nullptr;
+
+	return candidate;
 }
 
 // =========================

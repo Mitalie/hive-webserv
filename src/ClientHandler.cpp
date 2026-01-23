@@ -126,7 +126,7 @@ std::unique_ptr<IRequestHandler> ClientHandler::createRequestHandler(RequestHead
 	bodyLen = cl.length;
 	partialHeaderPending = false;
 
-	const RouteConfig* route = matchRoute(header.path(), serverConfig);
+	const RouteConfig* route = matchRoute(header.path(), header.method(), serverConfig);
 	if (!route)
 		return std::make_unique<ErrorRequestHandler>(*this, std::move(header), serverConfig, 404);
 
