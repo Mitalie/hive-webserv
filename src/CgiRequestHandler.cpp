@@ -22,6 +22,7 @@
 CgiRequestHandler::CgiRequestHandler(IRequestManager &manager, const RequestHeader &header, const RouteConfig &route, const std::string &scriptPath)
     : manager_(manager),
       storedHeader_(header),
+	  scriptPath_(scriptPath),
       startTime_(std::chrono::steady_clock::now())
 {
     // Determine script path and interpreter

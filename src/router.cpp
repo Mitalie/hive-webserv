@@ -6,6 +6,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <sstream>
 #include <vector>
 
 #include "Config.hpp"
@@ -144,7 +145,6 @@ std::unique_ptr<IRequestHandler> handleRequestOnPath(
 		return std::make_unique<DeleteRequestHandler>(manager, path.c_str());
 
 	// 6. Default: serve static file
-	std::string filePath = path.string();
 	bool isRoot = (path == std::filesystem::path(route.root));
 
 	// Check if path is a directory
@@ -158,46 +158,38 @@ std::unique_ptr<IRequestHandler> handleRequestOnPath(
 		{
 			std::filesystem::path indexPath = path / route.index;
 			if (std::filesystem::exists(indexPath) && std::filesystem::is_regular_file(indexPath))
-			{
 				// Index file exists, update path to serve it
 				path = indexPath;
-				filePath = indexPath.string();
-			}
 			else if (route.autoindex)
-			{
 				// Index file doesn't exist but autoindex is enabled
 				return std::make_unique<AutoindexRequestHandler>(manager, path, header.path(), !isRoot);
-			}
 			else
-			{
 				// No index file and autoindex disabled
 				return std::make_unique<ErrorRequestHandler>(manager, header, server, 404); // Forbidden
-			}
 		}
 		else if (route.autoindex)
-		{
 			// No index configured but autoindex is enabled
 			return std::make_unique<AutoindexRequestHandler>(manager, path, header.path(), !isRoot);
-		}
 		else
-		{
 			// Directory request with no index and no autoindex
 			return std::make_unique<ErrorRequestHandler>(manager, header, server, 403); // Forbidden
-		}
 	}
-	if (!std::filesystem::is_regular_file(path))
+
+	// Check for CGI match (after directory logic, so index.php is caught)
+	if (hasCgiExtension(path, route.cgiInterpreters))
 	{
-		// Not a regular file (e.g., symlink, device, etc.)
-		return std::make_unique<ErrorRequestHandler>(manager, header, server, 403); // Forbidden
+		return std::make_unique<CgiRequestHandler>(manager, header, route, path.string()); // Forbidden
 	}
+
+	// 7. Final File Checks
+	if (!std::filesystem::exists(path) || !std::filesystem::is_regular_file(path))
+		return std::make_unique<ErrorRequestHandler>(manager, header, server, 404);
+
 	auto perms = std::filesystem::status(path).permissions();
-	if ((perms & std::filesystem::perms::owner_read) == std::filesystem::perms::none &&
-		(perms & std::filesystem::perms::group_read) == std::filesystem::perms::none &&
-		(perms & std::filesystem::perms::others_read) == std::filesystem::perms::none)
-	{
+	if ((perms & std::filesystem::perms::owner_read) == std::filesystem::perms::none)
 		// No read permission
 		return std::make_unique<ErrorRequestHandler>(manager, header, server, 403); // Forbidden
-	}
+
 	return std::make_unique<FileRequestHandler>(manager, path.c_str());
 }
 
@@ -225,26 +217,32 @@ std::unique_ptr<IRequestHandler> handleRequestForRoute(
 		return std::make_unique<RedirectRequestHandler>(manager, header, route.redirect, route.redirectCode);
 
 	// 3. Resolve Path & Check CGI (Filesystem Traversal)
-	try
-	{
-		std::filesystem::path fullPath = resolveRoutePath(urlPath, route);
-		if (!isPathWithinRoot(fullPath, route.root))
-			return std::make_unique<ErrorRequestHandler>(manager, header, server, 403); // Forbidden - path traversal attempt
+	std::filesystem::path current = route.root;
+	std::string relativeSuffix = urlPath.substr(route.path.length());
+	if (relativeSuffix.empty() || relativeSuffix[0] != '/') relativeSuffix = "/" + relativeSuffix;
 
-		if (std::filesystem::exists(fullPath))
+	std::stringstream ss(relativeSuffix);
+	std::string segment;
+	while (std::getline(ss, segment, '/'))
+	{
+		if (segment.empty())
+			continue;
+		current /= segment;
+
+		if (!isPathWithinRoot(current, route.root))
+			return std::make_unique<ErrorRequestHandler>(manager, header, server, 403);
+
+		// Check for CGI match (Priority over existence for "Allow Nonexistent")
+		if (hasCgiExtension(current, route.cgiInterpreters))
 		{
-			if (hasCgiExtension(fullPath, route.cgiInterpreters))
-			{
-				return std::make_unique<CgiRequestHandler>(manager, header, route, fullPath.string());
-			}
-
-			// Found a regular file. Stop traversing and handle it.
-			return handleRequestOnPath(manager, header, server, route, fullPath, urlPath);
+			// If it exists as a directory, we must continue traversing (it's not the script)
+			if (std::filesystem::exists(current) && std::filesystem::is_directory(current))
+				continue;
+			
+			// Otherwise (File exists, or File doesn't exist), treat as CGI script
+			// TODO: pass remaining segments to CGI script as PATH_INFO
+			return std::make_unique<CgiRequestHandler>(manager, header, route, current.string());
 		}
-		return std::make_unique<ErrorRequestHandler>(manager, header, server, 404); // Not Found
-	}
-	catch (const std::exception &e)
-	{
 	}
 
 	// Fallback: If traversal finished without returning, use the full resolved path.
