@@ -150,12 +150,12 @@ void ClientHandler::createRequestHandler(RequestHeader &&header)
 	if (useBodyLenMax && bodyLen > bodyLenMax)
 		return terminateRequest(413);
 
-	// Use router to select and create the appropriate handler
+	// Use router function to select and construct the appropriate handler
 	// Handle exception in case the handler completes or errors within constructor
 	handleDelayedCleanup<TerminateRequestException>(
-		[this, &header, &serverConfig, route]
+		[this, &header, route]
 		{
-			request = router(*this, std::move(header), serverConfig, *route);
+			request = handleRequestForRoute(*this, std::move(header), *route);
 		});
 }
 
