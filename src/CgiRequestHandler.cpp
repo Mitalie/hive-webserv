@@ -131,16 +131,14 @@ void CgiRequestHandler::handleCgiEof()
 	if (!headersParsed_)
 	{
 		std::cerr << "[CGI] Error: Premature EOF before headers" << std::endl;
-		// TODO call on request error once it supports error request messages
-		return;
+		manager_.onRequestError(502);
 	}
 
 	// 2. Content-length mismatch
 	if (!useChunkedEncoding_ && remainingResponseContentLength_ > 0)
 	{
 		std::cerr << "[CGI] Error: Missing " << remainingResponseContentLength_ << " bytes" << std::endl;
-		// TODO call on request error once it supports error request messages
-		return;
+		manager_.onRequestError(502);
 	}
 
 	// 3. Success
