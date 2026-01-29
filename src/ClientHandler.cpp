@@ -12,7 +12,6 @@
 #include "Config.hpp"
 #include "ConnectionManager.hpp"
 #include "DelayedCleanup.hpp"
-#include "ErrorRequestHandler.hpp"
 #include "HeaderUtil.hpp"
 #include "IRequestHandler.hpp"
 #include "RequestHeader.hpp"
@@ -112,7 +111,7 @@ void ClientHandler::destroyConnection()
 	manager.destroyConnection(*this);
 }
 
-std::unique_ptr<IRequestHandler> ClientHandler::createRequestHandler(RequestHeader &&header)
+void ClientHandler::createRequestHandler(RequestHeader &&header)
 {
 	const ServerConfig &serverConfig = findServerConfig(header, config);
 	chunked = false;
@@ -124,13 +123,13 @@ std::unique_ptr<IRequestHandler> ClientHandler::createRequestHandler(RequestHead
 	TransferEncodingResult te = getTransferEncoding(header.fields);
 	ContentLengthResult cl = getContentLength(header.fields);
 	if (te.present && cl.present) // Both T-E and C-L specified? Might be malicious
-		return std::make_unique<ErrorRequestHandler>(*this, std::move(header), serverConfig, 400);
+		return terminateRequest(400);
 	if (te.chunkedNotFinal) // Chunked is not final T-E, can't use it to detect end
-		return std::make_unique<ErrorRequestHandler>(*this, std::move(header), serverConfig, 400);
+		return terminateRequest(400);
 	if (te.unknown) // Unsupported T-E value, don't know how to decode
-		return std::make_unique<ErrorRequestHandler>(*this, std::move(header), serverConfig, 501);
+		return terminateRequest(501);
 	if (cl.invalid) // C-L does not parse cleanly, can't use it to detect end
-		return std::make_unique<ErrorRequestHandler>(*this, std::move(header), serverConfig, 400);
+		return terminateRequest(400);
 	// Framing successfully determined
 	chunked = te.chunked;
 	bodyLen = cl.length;
@@ -138,7 +137,7 @@ std::unique_ptr<IRequestHandler> ClientHandler::createRequestHandler(RequestHead
 
 	const RouteConfig *route = matchRoute(header.path(), header.method(), serverConfig);
 	if (!route)
-		return std::make_unique<ErrorRequestHandler>(*this, std::move(header), serverConfig, 404);
+		return terminateRequest(404);
 
 	// Determine effective max body size
 	if (route->clientMaxBodySize.has_value())
@@ -149,10 +148,15 @@ std::unique_ptr<IRequestHandler> ClientHandler::createRequestHandler(RequestHead
 	// Early check for excess body size if bodyLen already known
 	useBodyLenMax = bodyLenMax > 0;
 	if (useBodyLenMax && bodyLen > bodyLenMax)
-		return std::make_unique<ErrorRequestHandler>(*this, std::move(header), serverConfig, 413);
+		return terminateRequest(413);
 
 	// Use router to select and create the appropriate handler
-	return router(*this, std::move(header), serverConfig, *route);
+	// Handle exception in case the handler completes or errors within constructor
+	handleDelayedCleanup<TerminateRequestException>(
+		[this, &header, &serverConfig, route]
+		{
+			request = router(*this, std::move(header), serverConfig, *route);
+		});
 }
 
 void ClientHandler::handleDataRequestHeader()
@@ -162,12 +166,7 @@ void ClientHandler::handleDataRequestHeader()
 	// The reader will consume bytes until end of header
 	std::optional<RequestHeader> header = headerReader.tryParse(availableData);
 	if (header)
-		// Request handler constructors may throw TerminateRequestException, catch it here
-		handleDelayedCleanup<TerminateRequestException>(
-			[this, &header]
-			{
-				request = createRequestHandler(std::move(*header));
-			});
+		createRequestHandler(std::move(*header));
 }
 
 void ClientHandler::handleDataChunkHeader()
