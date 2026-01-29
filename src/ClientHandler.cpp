@@ -126,14 +126,23 @@ std::unique_ptr<IRequestHandler> ClientHandler::createRequestHandler(RequestHead
 	bodyLen = cl.length;
 	partialHeaderPending = false;
 
-	// Early check for excess body size
-	bodyLenMax = serverConfig.clientMaxBodySize;
+	const RouteConfig* route = matchRoute(header.path(), header.method(), serverConfig);
+	if (!route)
+		return std::make_unique<ErrorRequestHandler>(*this, std::move(header), serverConfig, 404);
+
+	// Determine effective max body size
+	if (route->clientMaxBodySize.has_value())
+		bodyLenMax = *route->clientMaxBodySize;
+	else
+		bodyLenMax = serverConfig.clientMaxBodySize;
+	
+	// Early check for excess body size if bodyLen already known
 	useBodyLenMax = bodyLenMax > 0;
 	if (useBodyLenMax && bodyLen > bodyLenMax)
 		return std::make_unique<ErrorRequestHandler>(*this, std::move(header), serverConfig, 413);
 
 	// Use router to select and create the appropriate handler
-	return router(*this, std::move(header), serverConfig);
+	return router(*this, std::move(header), serverConfig, *route);
 }
 
 void ClientHandler::handleDataRequestHeader()

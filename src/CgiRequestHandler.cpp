@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdio>
 #include <exception>
+#include <filesystem>
 #include <iostream>
 #include <memory>
 #include <span>
@@ -18,13 +19,13 @@
 #include "ReadWriteFD.hpp"
 #include "RequestHeader.hpp"
 
-CgiRequestHandler::CgiRequestHandler(IRequestManager &manager, const RequestHeader &header, const RouteConfig &route)
+CgiRequestHandler::CgiRequestHandler(IRequestManager &manager, const RequestHeader &header, const RouteConfig &route, const std::string &scriptPath)
 	: manager_(manager),
 	  storedHeader_(header),
+	  scriptPath_(scriptPath),
 	  startTime_(std::chrono::steady_clock::now())
 {
 	// Determine script path and interpreter
-	scriptPath_ = route.root + header.path();
 	interpreter_ = findInterpreter(scriptPath_, route);
 
 	if (interpreter_.empty())
@@ -130,16 +131,14 @@ void CgiRequestHandler::handleCgiEof()
 	if (!headersParsed_)
 	{
 		std::cerr << "[CGI] Error: Premature EOF before headers" << std::endl;
-		// TODO call on request error once it supports error request messages
-		return;
+		manager_.onRequestError(502);
 	}
 
 	// 2. Content-length mismatch
 	if (!useChunkedEncoding_ && remainingResponseContentLength_ > 0)
 	{
 		std::cerr << "[CGI] Error: Missing " << remainingResponseContentLength_ << " bytes" << std::endl;
-		// TODO call on request error once it supports error request messages
-		return;
+		manager_.onRequestError(502);
 	}
 
 	// 3. Success
@@ -287,7 +286,11 @@ void CgiRequestHandler::onBodyDone()
 
 		bufferingRequestBody_ = false;
 	}
-	// For non-chunked requests, body is streamed directly so nothing to do
+
+	// Notify CGI handler that input is finished.
+	// It will drain the buffer and close the pipe.
+	if (cgiHandler_)
+		cgiHandler_->finishInput();
 }
 
 void CgiRequestHandler::notifyResponseBuffer(size_t bufferSize)

@@ -32,7 +32,9 @@ CgiHandler::CgiHandler(RequestHeader header,
 	: header(std::move(header)),
 	  scriptPath(std::move(scriptPath)),
 	  interpreterPath(std::move(interpreterPath)),
-	  pid(-1)
+	  pid(-1),
+	  inputFinished(false),
+	  currentStdinQueueSize(0)
 {
 	pipeIn[0] = -1;
 	pipeIn[1] = -1;
@@ -87,7 +89,11 @@ CgiHandler::CgiHandler(RequestHeader header,
 		ReadWriteFD::ReadableDataCallback{},
 		ReadWriteFD::ReadableEofCallback{},
 		ReadWriteFD::ReadableErrorCallback{},
-		stdinDrainCallback,
+		[this, stdinDrainCallback](size_t bufferSize)
+		{
+			// Clean delegate to member function
+			this->onStdinDrain(bufferSize, stdinDrainCallback);
+		},
 		stdinErrorCallback);
 	pipeIn[1] = -1;
 
@@ -114,6 +120,27 @@ CgiHandler::~CgiHandler()
 	}
 }
 
+void CgiHandler::onStdinDrain(size_t bufferSize, ReadWriteFD::WritableDrainCallback originalCallback)
+{
+	// Update local tracking
+	this->currentStdinQueueSize = bufferSize;
+
+	// 1. Forward to original callback (for backpressure management)
+	if (originalCallback)
+		originalCallback(bufferSize);
+
+	// 2. Check if we need to close the pipe
+	// We use queueCallback to ensure we don't destroy the ReadWriteFD 
+	// while we are currently inside its callback stack.
+	if (this->inputFinished && bufferSize == 0)
+	{
+		cbOwner.queueCallback([this]() {
+			if (this->stdinStream)
+				this->stdinStream.reset();
+		});
+	}
+}
+
 // Forwarding methods
 void CgiHandler::startReading()
 {
@@ -130,8 +157,22 @@ void CgiHandler::stopReading()
 size_t CgiHandler::queueWrite(std::span<const char> data)
 {
 	if (stdinStream)
-		return stdinStream->queueWrite(data);
+	{
+		currentStdinQueueSize = stdinStream->queueWrite(data);
+		return currentStdinQueueSize;
+	}
 	return 0;
+}
+
+void CgiHandler::finishInput()
+{
+	inputFinished = true;
+	// If the buffer is already empty, close immediately.
+	// Otherwise, the drain callback will handle it.
+	if (stdinStream && currentStdinQueueSize == 0)
+	{
+		stdinStream.reset();
+	}
 }
 
 void CgiHandler::cleanupPipes()
