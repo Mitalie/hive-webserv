@@ -5,10 +5,10 @@
 #include <span>
 #include <vector>
 
-#include "AbortWorkException.hpp"
 #include "CallbackQueue.hpp"
 #include "ChunkHeaderReader.hpp"
 #include "Config.hpp"
+#include "DelayedCleanup.hpp"
 #include "RequestHeaderReader.hpp"
 #include "IRequestManager.hpp"
 #include "IRequestHandler.hpp"
@@ -39,7 +39,7 @@ public:
 	virtual void setReadingBody(bool reading) override;
 	virtual size_t writeResponseData(std::span<const char> data) override;
 	virtual void onRequestDone() override;
-	virtual void onRequestError() override;
+	virtual void onRequestError(int errorStatus) override;
 
 private:
 	const ListenerConfig &config;
@@ -52,14 +52,14 @@ private:
 	std::span<const char> availableData;
 	bool bufferedDataCallbackPending = false;
 	bool processingData = false;
+	bool terminateConnection = false;
+	size_t unfinishedResponseBytes = 0;
+	size_t bufferedResponseBytes = 0;
 	void processData();
 	void socketReadCallback(std::span<const char> newData);
+	void socketEofCallback();
 	void bufferedDataCallback();
 	void socketWriteCallback(size_t bufferSize);
-	bool clientEOF = false;
-	bool writingResponse = false;
-	bool responseStarted = false;
-	bool partialHeaderPending = false;
 	void updateWakeup();
 	void setupMainLoopCallback();
 
@@ -68,8 +68,7 @@ private:
 	ChunkHeaderReader chunkHeaderReader;
 	RequestHeaderReader headerReader;
 	std::unique_ptr<IRequestHandler> request;
-	// Keep track of completed request even if request ptr wasn't set yet
-	bool requestDone = false;
+	bool partialHeaderPending = false;
 	bool readingPaused = false;
 	bool chunked = false;
 	bool useBodyLenMax = false;
@@ -80,15 +79,27 @@ private:
 	void handleDataChunkHeader();
 	void handleDataRequestHeader();
 	void handleData();
+	bool isBodyDone();
+	void terminateRequest(std::optional<int> errorStatus);
 
-	class TerminateClientException : public AbortWorkException
+	class TerminateClientException : public DelayedCleanupBase
 	{
 	public:
 		TerminateClientException(ClientHandler *handler);
-		virtual ~TerminateClientException();
 
 	private:
 		ClientHandler *handler;
+		void cleanup() const override;
 	};
-	class RequestFailedException : public std::exception {};
+
+	class TerminateRequestException : public DelayedCleanupBase
+	{
+	public:
+		TerminateRequestException(ClientHandler &handler, std::optional<int> errorStatus = std::nullopt);
+
+	private:
+		ClientHandler &handler;
+		std::optional<int> errorStatus;
+		void cleanup() const override;
+	};
 };

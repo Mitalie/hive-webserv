@@ -2,7 +2,7 @@
 
 #include <cstddef>
 
-#include "AbortWorkException.hpp"
+#include "DelayedCleanup.hpp"
 
 // Singleton instance
 CallbackQueue CallbackQueue::instance;
@@ -29,15 +29,9 @@ void CallbackQueue::handleQueue()
 	*/
 	for (size_t i = 0; i < instance.queue.size(); ++i)
 	{
-		try
-		{
-			instance.queue[i].cb();
-		}
-		catch (const AbortWorkException &e)
-		{
-			// Do nothing but stop exception propagation. Derived classes of AbortWorkException
-			// may perform additional cleanup in their destructor.
-		}
+		// This function should only be called from main, so it should be safe
+		// to do *any* delayed cleanup here
+		handleDelayedCleanup<DelayedCleanupBase>(instance.queue[i].cb);
 	}
 	instance.queue.clear();
 }

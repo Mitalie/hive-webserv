@@ -7,7 +7,7 @@
 #include <sys/poll.h>
 #include <unistd.h>
 
-#include "AbortWorkException.hpp"
+#include "DelayedCleanup.hpp"
 
 // Singleton instance
 Poll Poll::instance;
@@ -54,45 +54,38 @@ void Poll::doPoll(int timeout)
 	fdsIdx = 0;
 	while (fdsIdx < numFds)
 	{
-		try
-		{
-			pollfd &current = fds[fdsIdx++];
+		pollfd &current = fds[fdsIdx++];
+		// Ensure the FD is still registered (it might have been by callbacks in previous iterations)
+		auto it = instance.fdMap.find(current.fd);
+		if (it == instance.fdMap.end())
+			return;
 
-			// Ensure the FD is still registered (it might have been by callbacks in previous iterations)
-			auto it = instance.fdMap.find(current.fd);
-			if (it == instance.fdMap.end())
-				continue;
+		// 1. Handle Errors
+		if (current.revents & POLLERR)
+			if (it->second.error)
+				// This function should only be called from main, so it should be safe
+				// to do *any* delayed cleanup here
+				handleDelayedCleanup<DelayedCleanupBase>(it->second.error);
 
-			// 1. Handle Errors
-			if (current.revents & POLLERR)
-				if (it->second.error)
-					it->second.error();
+		// Check FD again after callback
+		it = instance.fdMap.find(current.fd);
+		if (it == instance.fdMap.end())
+			return;
 
-			// Check FD again after callback
-			it = instance.fdMap.find(current.fd);
-			if (it == instance.fdMap.end())
-				continue;
+		// 2. Handle Read (or Hangup)
+		if (current.revents & (POLLIN | POLLHUP))
+			if (it->second.readable)
+				handleDelayedCleanup<DelayedCleanupBase>(it->second.readable);
 
-			// 2. Handle Read (or Hangup)
-			if (current.revents & (POLLIN | POLLHUP))
-				if (it->second.readable)
-					it->second.readable();
+		// Check FD again after callback
+		it = instance.fdMap.find(current.fd);
+		if (it == instance.fdMap.end())
+			return;
 
-			// Check FD again after callback
-			it = instance.fdMap.find(current.fd);
-			if (it == instance.fdMap.end())
-				continue;
-
-			// 3. Handle Write
-			if (current.revents & POLLOUT)
-				if (it->second.writable)
-					it->second.writable();
-		}
-		catch (const AbortWorkException &e)
-		{
-			// Do nothing but stop exception propagation. Derived classes of AbortWorkException
-			// may perform additional cleanup in their destructor.
-		}
+		// 3. Handle Write
+		if (current.revents & POLLOUT)
+			if (it->second.writable)
+				handleDelayedCleanup<DelayedCleanupBase>(it->second.writable);
 	}
 }
 
