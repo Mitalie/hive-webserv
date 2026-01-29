@@ -12,6 +12,7 @@
 #include "Config.hpp"
 #include "ConnectionManager.hpp"
 #include "DelayedCleanup.hpp"
+#include "ErrorRequestHandler.hpp"
 #include "HeaderUtil.hpp"
 #include "IRequestHandler.hpp"
 #include "RequestHeader.hpp"
@@ -114,6 +115,7 @@ void ClientHandler::destroyConnection()
 void ClientHandler::createRequestHandler(RequestHeader &&header)
 {
 	const ServerConfig &serverConfig = findServerConfig(header, config);
+	currentRequestConfig = &serverConfig;
 	chunked = false;
 	bodyLen = 0;
 	// partialHeaderPending remains set until request framing is determined to
@@ -355,18 +357,40 @@ void ClientHandler::terminateRequest(std::optional<int> errorStatus)
 		// Request handler completed successfully
 		readingPaused = false;
 		unfinishedResponseBytes = 0;
+		currentError = std::nullopt;
 	}
-	else if (unfinishedResponseBytes == 0)
-	{
-		// Request handler failed without output, send error response instead
-		// TODO construct ErrorRequestHandler or write response manually?
-	}
-	else
+	else if (unfinishedResponseBytes > 0)
 	{
 		// Request handler failed with output
 		// The unfinished output makes the connection unusable, so just wait
 		// for any finished responses to drain and then terminate connection.
 		terminateConnection = true;
+	}
+	else if (!currentError)
+	{
+		// Request handler failed without output, send error response instead
+		currentError = errorStatus;
+		handleDelayedCleanup<TerminateRequestException>(
+			[this, errorStatus]
+			{
+				request = std::make_unique<ErrorRequestHandler>(*this, *currentRequestConfig, *errorStatus);
+			});
+	}
+	else
+	{
+		// ErrorRequestHandler failed, output minimal error instead of trying again
+		std::string errorBody =
+			"Error handler for status code " +
+			std::to_string(*currentError) +
+			"failed.";
+		writeResponseData(
+			"HTTP/1.1 500 Internal Server Error\r\n"
+			"Content-Type: text/plain\r\n"
+			"Content-Length: " +
+			std::to_string(errorBody.size()) + "\r\n" +
+			"\r\n" +
+			errorBody);
+		terminateRequest(std::nullopt);
 	}
 	updateWakeup();
 }

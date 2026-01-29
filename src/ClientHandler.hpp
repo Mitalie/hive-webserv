@@ -86,6 +86,11 @@ private:
 	void handleDataRequestHeader();
 	void handleData();
 	bool isBodyDone();
+
+	/* Error handling and termination */
+
+	const ServerConfig *currentRequestConfig;
+	std::optional<int> currentError = std::nullopt;
 	void terminateRequest(std::optional<int> errorStatus);
 
 	class TerminateRequestException : public DelayedCleanupBase
