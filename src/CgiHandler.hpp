@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include "CallbackQueue.hpp"
 #include "ReadWriteFD.hpp"
 #include "RequestHeader.hpp"
 
@@ -54,9 +55,18 @@ public:
 	*/
 	size_t queueWrite(std::span<const char> data);
 
+	/*
+		Signals that no more data will be written to the script's input.
+		The pipe will be closed once all buffered data has been drained.
+	*/
+	void finishInput();
+
 private:
 	void setupChild();
 	void cleanupPipes();
+
+	// Extracted logic for handling drain events
+	void onStdinDrain(size_t bufferSize, ReadWriteFD::WritableDrainCallback originalCallback);
 
 	// Helper to translate HTTP headers into CGI environment format
 	std::vector<std::string> createEnvVariables(const std::string &scriptName, const std::string &queryStr);
@@ -65,10 +75,15 @@ private:
 	std::string scriptPath;
 	std::string interpreterPath;
 
+	CallbackQueue::CallbackOwner cbOwner;
+
 	std::unique_ptr<ReadWriteFD> stdoutStream;
 	std::unique_ptr<ReadWriteFD> stdinStream;
 
 	pid_t pid;
 	int pipeIn[2];	// Server -> Script
 	int pipeOut[2]; // Script -> Server
+
+	bool inputFinished;
+	size_t currentStdinQueueSize;
 };

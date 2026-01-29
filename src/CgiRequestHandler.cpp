@@ -20,31 +20,31 @@
 #include "RequestHeader.hpp"
 
 CgiRequestHandler::CgiRequestHandler(IRequestManager &manager, const RequestHeader &header, const RouteConfig &route, const std::string &scriptPath)
-    : manager_(manager),
-      storedHeader_(header),
+	: manager_(manager),
+	  storedHeader_(header),
 	  scriptPath_(scriptPath),
-      startTime_(std::chrono::steady_clock::now())
+	  startTime_(std::chrono::steady_clock::now())
 {
-    // Determine script path and interpreter
-    interpreter_ = findInterpreter(scriptPath_, route);
+	// Determine script path and interpreter
+	interpreter_ = findInterpreter(scriptPath_, route);
 
-    if (interpreter_.empty())
-    {
-        manager_.onRequestError();
-        return;
-    }
+	if (interpreter_.empty())
+	{
+		manager_.onRequestError();
+		return;
+	}
 
-    // Check if client is using chunked transfer encoding
-    std::string te = header.get("transfer-encoding");
-    if (te.find("chunked") != std::string::npos)
-    {
-        // Defer CGI launch until we have the full body
-        bufferingRequestBody_ = true;
-        return;
-    }
+	// Check if client is using chunked transfer encoding
+	std::string te = header.get("transfer-encoding");
+	if (te.find("chunked") != std::string::npos)
+	{
+		// Defer CGI launch until we have the full body
+		bufferingRequestBody_ = true;
+		return;
+	}
 
-    // No chunked encoding, launch CGI immediately
-    launchCgiProcess();
+	// No chunked encoding, launch CGI immediately
+	launchCgiProcess();
 }
 
 void CgiRequestHandler::launchCgiProcess()
@@ -286,7 +286,11 @@ void CgiRequestHandler::onBodyDone()
 
 		bufferingRequestBody_ = false;
 	}
-	// For non-chunked requests, body is streamed directly so nothing to do
+
+	// Notify CGI handler that input is finished.
+	// It will drain the buffer and close the pipe.
+	if (cgiHandler_)
+		cgiHandler_->finishInput();
 }
 
 void CgiRequestHandler::notifyResponseBuffer(size_t bufferSize)
