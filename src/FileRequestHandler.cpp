@@ -19,12 +19,6 @@ FileRequestHandler::FileRequestHandler(IRequestManager &manager, const char *fil
 	start(filePath);
 }
 
-FileRequestHandler::~FileRequestHandler()
-{
-	if (fd_ != -1)
-		close(fd_);
-}
-
 void FileRequestHandler::onBodyData(std::span<const char> /*data*/)
 {
 	// Ignore body data for GET
@@ -59,7 +53,7 @@ void FileRequestHandler::sendErrorResponse(int code, const std::string &message)
 
 void FileRequestHandler::start(const char *filePath)
 {
-	fd_ = open(filePath, O_RDONLY);
+	fd_ = UnixFD(open(filePath, O_RDONLY));
 	if (fd_ == -1)
 	{
 		if (errno == ENOENT)
