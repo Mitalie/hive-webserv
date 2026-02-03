@@ -1,13 +1,11 @@
 #include <iostream>
-#include <utility>
 #include <vector>
 
 #include "CallbackQueue.hpp"
 #include "ClientHandler.hpp"
 #include "Config.hpp"
-#include "Listener.hpp"
+#include "ConnectionManager.hpp"
 #include "Poll.hpp"
-#include "UnixFD.hpp"
 
 int main(int argc, char *argv[])
 {
@@ -18,18 +16,11 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 	PortServerMap config = parseConfig(argv[1]);
-	std::vector<Listener> listeners;
-	listeners.reserve(config.size());
+	std::vector<ConnectionManager> connManagers;
+	connManagers.reserve(config.size());
 	for (const auto &[hostPort, listenerConfig] : config)
 	{
-		listeners.emplace_back(
-			hostPort,
-			// C++20 allows capturing structured bindings but Clang <16 doesn't support it
-			[&listenerConfig = listenerConfig](UnixFD &&connFd)
-			{
-				// TODO: store connections to facilitate clean exit
-				new ClientHandler(listenerConfig, std::move(connFd));
-			});
+		connManagers.emplace_back(hostPort, listenerConfig);
 	}
 	while (true)
 	{
