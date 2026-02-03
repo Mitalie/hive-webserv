@@ -1,9 +1,12 @@
 #pragma once
 
+#include <set>
+
 #include "Config.hpp"
 #include "DelayedCleanup.hpp"
 #include "Listener.hpp"
 #include "UnixFD.hpp"
+#include "Utils.hpp"
 
 class ClientHandler;
 
@@ -16,15 +19,19 @@ public:
 private:
 	const ListenerConfig &config;
 	Listener listener;
+	std::set<ClientHandler, OrderByAddr<ClientHandler>> connections;
 
 	void onAccept(UnixFD &&connFd);
 
 	class DestroyConnectionException : public DelayedCleanupBase
 	{
 	public:
-		DestroyConnectionException(ClientHandler &connection);
+		DestroyConnectionException(
+			ConnectionManager &manager,
+			ClientHandler &connection);
 
 	private:
+		ConnectionManager &manager;
 		ClientHandler &connection;
 		void cleanup() const override;
 	};

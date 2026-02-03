@@ -17,17 +17,19 @@ ConnectionManager::ConnectionManager(const HostPort &hostPort, const ListenerCon
 
 void ConnectionManager::onAccept(UnixFD &&connFd)
 {
-	// TODO: store connections to facilitate clean exit
-	new ClientHandler(config, *this, std::move(connFd));
+	connections.emplace(config, *this, std::move(connFd));
 }
 
 void ConnectionManager::destroyConnection(ClientHandler &connection)
 {
-	throw DestroyConnectionException(connection);
+	throw DestroyConnectionException(*this, connection);
 }
 
-ConnectionManager::DestroyConnectionException::DestroyConnectionException(ClientHandler &connection)
-	: connection(connection)
+ConnectionManager::DestroyConnectionException::DestroyConnectionException(
+	ConnectionManager &manager,
+	ClientHandler &connection)
+	: manager(manager),
+	  connection(connection)
 {
 }
 
@@ -35,5 +37,5 @@ void ConnectionManager::DestroyConnectionException::cleanup() const
 {
 	// When this is called, the exception should have propagated out of any
 	// function that might still access the object.
-	delete &connection;
+	manager.connections.erase(connection);
 }
