@@ -10,6 +10,7 @@
 #include <utility>
 
 #include "Config.hpp"
+#include "ConnectionManager.hpp"
 #include "DelayedCleanup.hpp"
 #include "ErrorRequestHandler.hpp"
 #include "HeaderUtil.hpp"
@@ -56,8 +57,12 @@ static const ServerConfig &findServerConfig(const RequestHeader &header, const L
 	return servers[0];
 }
 
-ClientHandler::ClientHandler(const ListenerConfig &config, UnixFD &&fd)
+ClientHandler::ClientHandler(
+	const ListenerConfig &config,
+	ConnectionManager &manager,
+	UnixFD &&fd)
 	: config(config),
+	  manager(manager),
 	  socket(
 		  std::move(fd),
 		  [this](std::span<const char> newData)
@@ -65,11 +70,11 @@ ClientHandler::ClientHandler(const ListenerConfig &config, UnixFD &&fd)
 		  [this]()
 		  { socketEofCallback(); },
 		  [this]()
-		  { throw TerminateClientException(this); }, // Handle Read Error
+		  { destroyConnection(); }, // Handle Read Error
 		  [this](size_t bufferSize)
 		  { socketWriteCallback(bufferSize); },
 		  [this]()
-		  { throw TerminateClientException(this); }) // Handle Write Error
+		  { destroyConnection(); }) // Handle Write Error
 {
 	leftoverData.reserve(socket.maxReadSize);
 	updateWakeup();
@@ -102,6 +107,11 @@ void ClientHandler::onRequestError(int errorStatus)
 	throw TerminateRequestException(*this, errorStatus);
 }
 
+void ClientHandler::destroyConnection()
+{
+	manager.destroyConnection(*this);
+}
+
 std::unique_ptr<IRequestHandler> ClientHandler::createRequestHandler(RequestHeader &&header)
 {
 	const ServerConfig &serverConfig = findServerConfig(header, config);
@@ -126,7 +136,7 @@ std::unique_ptr<IRequestHandler> ClientHandler::createRequestHandler(RequestHead
 	bodyLen = cl.length;
 	partialHeaderPending = false;
 
-	const RouteConfig* route = matchRoute(header.path(), header.method(), serverConfig);
+	const RouteConfig *route = matchRoute(header.path(), header.method(), serverConfig);
 	if (!route)
 		return std::make_unique<ErrorRequestHandler>(*this, std::move(header), serverConfig, 404);
 
@@ -135,7 +145,7 @@ std::unique_ptr<IRequestHandler> ClientHandler::createRequestHandler(RequestHead
 		bodyLenMax = *route->clientMaxBodySize;
 	else
 		bodyLenMax = serverConfig.clientMaxBodySize;
-	
+
 	// Early check for excess body size if bodyLen already known
 	useBodyLenMax = bodyLenMax > 0;
 	if (useBodyLenMax && bodyLen > bodyLenMax)
@@ -300,7 +310,7 @@ void ClientHandler::updateWakeup()
 		// Terminate requested
 		if (!request && unfinishedResponseBytes >= bufferedResponseBytes)
 			// No request handler active, and no finished responses in buffer.
-			throw TerminateClientException(this);
+			destroyConnection();
 		// Don't wake up for input anymore, just waiting for request handler to
 		// terminate and for finished responses to send.
 		socket.stopReading();
@@ -326,18 +336,6 @@ void ClientHandler::updateWakeup()
 
 void ClientHandler::setupMainLoopCallback()
 {
-}
-
-ClientHandler::TerminateClientException::TerminateClientException(ClientHandler *handler)
-	: handler(handler)
-{
-}
-
-void ClientHandler::TerminateClientException::cleanup() const
-{
-	// When this is called, the exception should have propagated out of any
-	// function that might still access the object.
-	delete handler;
 }
 
 ClientHandler::TerminateRequestException::TerminateRequestException(ClientHandler &handler, std::optional<int> errorStatus)

@@ -8,6 +8,7 @@
 #include "CallbackQueue.hpp"
 #include "ChunkHeaderReader.hpp"
 #include "Config.hpp"
+#include "ConnectionManager.hpp"
 #include "DelayedCleanup.hpp"
 #include "RequestHeaderReader.hpp"
 #include "IRequestManager.hpp"
@@ -29,7 +30,10 @@ class Poll;
 class ClientHandler : public IRequestManager
 {
 public:
-	ClientHandler(const ListenerConfig &config, UnixFD &&fd);
+	ClientHandler(
+		const ListenerConfig &config,
+		ConnectionManager &manager,
+		UnixFD &&fd);
 	ClientHandler(const ClientHandler &other) = delete;
 	ClientHandler &operator=(const ClientHandler &other) = delete;
 	virtual ~ClientHandler();
@@ -43,7 +47,9 @@ public:
 
 private:
 	const ListenerConfig &config;
+	ConnectionManager &manager;
 	CallbackQueue::CallbackOwner cbOwner;
+	void destroyConnection();
 
 	/* IO handling and buffering */
 
@@ -81,16 +87,6 @@ private:
 	void handleData();
 	bool isBodyDone();
 	void terminateRequest(std::optional<int> errorStatus);
-
-	class TerminateClientException : public DelayedCleanupBase
-	{
-	public:
-		TerminateClientException(ClientHandler *handler);
-
-	private:
-		ClientHandler *handler;
-		void cleanup() const override;
-	};
 
 	class TerminateRequestException : public DelayedCleanupBase
 	{
