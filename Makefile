@@ -39,6 +39,7 @@ SRCS := $(addprefix $(SRCDIR)/,\
 	Utils.cpp \
 	MimeTypes.cpp \
 	Signals.cpp \
+	Timeout.cpp \
 )
 
 # Project targets
