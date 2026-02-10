@@ -6,9 +6,11 @@
 #include "Config.hpp"
 #include "ConnectionManager.hpp"
 #include "Poll.hpp"
+#include "Signals.hpp"
 
 int main(int argc, char *argv[])
 {
+	setupSignals();
 	if (argc != 2)
 	{
 		const char *name = argc >= 1 ? argv[0] : "webserv";
@@ -24,8 +26,11 @@ int main(int argc, char *argv[])
 	}
 	while (true)
 	{
-		// TODO: clean exit mechanism
-		Poll::doPoll();
+		// Signal may arrive between gotExitSignal and poll syscall.
+		// Set timeout to ensure we react to signal reasonably quickly.
+		Poll::doPoll(100);
 		CallbackQueue::handleQueue();
+		if (gotExitSignal())
+			break;
 	}
 }

@@ -1,5 +1,6 @@
 #include "Poll.hpp"
 
+#include <cerrno>
 #include <cstddef>
 #include <memory>
 #include <stdexcept>
@@ -44,6 +45,9 @@ void Poll::doPoll(int timeout)
 	}
 
 	int res = poll(fds.get(), numFds, timeout);
+	if (res < 0 && errno == EINTR)
+		// Signal handler ran, return to main to react to it
+		return;
 	if (res < 0)
 		throw std::runtime_error("poll");
 
