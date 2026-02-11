@@ -9,10 +9,12 @@
 #include <string>
 #include <utility>
 
+#include "ChunkHeaderReader.hpp"
 #include "Config.hpp"
 #include "ConnectionManager.hpp"
 #include "DelayedCleanup.hpp"
 #include "ErrorRequestHandler.hpp"
+#include "HeaderFields.hpp"
 #include "HeaderUtil.hpp"
 #include "IRequestHandler.hpp"
 #include "RequestHeader.hpp"
@@ -165,28 +167,46 @@ void ClientHandler::handleDataRequestHeader()
 {
 	if (!availableData.empty())
 		partialHeaderPending = true;
-	// The reader will consume bytes until end of header
-	std::optional<RequestHeader> header = headerReader.tryParse(availableData);
-	if (header)
-		createRequestHandler(std::move(*header));
+	try
+	{
+		// The reader will consume bytes until end of header
+		std::optional<RequestHeader> header = headerReader.tryParse(availableData);
+		if (header)
+			createRequestHandler(std::move(*header));
+	}
+	catch (const BadRequestHeader &)
+	{
+		terminateRequest(400);
+	}
+	catch (const BadHeaderFields &)
+	{
+		terminateRequest(400);
+	}
 }
 
 void ClientHandler::handleDataChunkHeader()
 {
-	// The reader will consume bytes until end of header
-	std::optional<size_t> chunkLen = chunkHeaderReader.tryParse(availableData);
-	if (chunkLen)
+	try
 	{
-		bodyLen = *chunkLen;
+		// The reader will consume bytes until end of header
+		std::optional<size_t> chunkLen = chunkHeaderReader.tryParse(availableData);
+		if (chunkLen)
+		{
+			bodyLen = *chunkLen;
 
-		// Check if this chunk would exceed maxBodySize
-		if (useBodyLenMax && bodyLen > bodyLenMax)
-			return terminateRequest(413);
-		bodyLenMax -= bodyLen;
+			// Check if this chunk would exceed maxBodySize
+			if (useBodyLenMax && bodyLen > bodyLenMax)
+				return terminateRequest(413);
+			bodyLenMax -= bodyLen;
 
-		if (bodyLen == 0)
-			// End of chunked body
-			chunked = false;
+			if (bodyLen == 0)
+				// End of chunked body
+				chunked = false;
+		}
+	}
+	catch (const BadChunkedBody &)
+	{
+		terminateRequest(400);
 	}
 }
 
