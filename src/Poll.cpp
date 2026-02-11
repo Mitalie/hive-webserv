@@ -62,34 +62,42 @@ void Poll::doPoll(int timeout)
 		// Ensure the FD is still registered (it might have been by callbacks in previous iterations)
 		auto it = instance.fdMap.find(current.fd);
 		if (it == instance.fdMap.end())
-			return;
+			continue;
 
 		// 1. Handle Errors
-		if (current.revents & POLLERR)
-			if (it->second.error)
-				// This function should only be called from main, so it should be safe
-				// to do *any* delayed cleanup here
-				handleDelayedCleanup<DelayedCleanupBase>(it->second.error);
+		bool isError = current.revents & POLLERR;
+		if (isError && it->second.error)
+		{
+			// This function should only be called from main, so it should be safe
+			// to do *any* delayed cleanup here
+			handleDelayedCleanup<DelayedCleanupBase>(it->second.error);
 
-		// Check FD again after callback
-		it = instance.fdMap.find(current.fd);
-		if (it == instance.fdMap.end())
-			return;
+			// Check FD again after callback
+			it = instance.fdMap.find(current.fd);
+			if (it == instance.fdMap.end())
+				continue;
+		}
 
 		// 2. Handle Read (or Hangup)
-		if (current.revents & (POLLIN | POLLHUP))
-			if (it->second.readable)
-				handleDelayedCleanup<DelayedCleanupBase>(it->second.readable);
+		bool isReadable = current.revents & (POLLIN | POLLHUP);
+		if (isReadable && it->second.readable)
+		{
+			// This function should only be called from main, so it should be safe
+			// to do *any* delayed cleanup here
+			handleDelayedCleanup<DelayedCleanupBase>(it->second.readable);
 
-		// Check FD again after callback
-		it = instance.fdMap.find(current.fd);
-		if (it == instance.fdMap.end())
-			return;
+			// Check FD again after callback
+			it = instance.fdMap.find(current.fd);
+			if (it == instance.fdMap.end())
+				continue;
+		}
 
 		// 3. Handle Write
-		if (current.revents & POLLOUT)
-			if (it->second.writable)
-				handleDelayedCleanup<DelayedCleanupBase>(it->second.writable);
+		bool isWritable = current.revents & POLLOUT;
+		if (isWritable && it->second.writable)
+			// This function should only be called from main, so it should be safe
+			// to do *any* delayed cleanup here
+			handleDelayedCleanup<DelayedCleanupBase>(it->second.writable);
 	}
 }
 
