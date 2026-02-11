@@ -10,6 +10,7 @@
 #include "IRequestHandler.hpp"
 #include "IRequestManager.hpp"
 #include "RequestHeader.hpp"
+#include "Timeout.hpp"
 
 /*
 	Bridge between the Server logic and the CGI process.
@@ -28,15 +29,13 @@ public:
 	void onBodyDone() override;
 	void notifyResponseBuffer(size_t bufferSize) override;
 
-	// Should be called periodically by the main loop to detect stuck scripts.
-	void checkTimeout();
-
 private:
 	std::string findInterpreter(const std::string &scriptPath, const RouteConfig &route);
 	void launchCgiProcess();
 
 	void handleCgiOutput(std::span<const char> data);
 	void handleCgiEof();
+	void checkTimeout();
 	size_t sendChunkedData(std::span<const char> data);
 	void sendBodyData(std::span<const char> data); // Helper to deduplicate logic
 
@@ -64,8 +63,8 @@ private:
 	bool useChunkedEncoding_ = false;			// True if CGI didn't provide Content-Length
 	size_t remainingResponseContentLength_ = 0; // Bytes remaining to send when Content-Length is known
 
-	// Timeout tracking
-	std::chrono::steady_clock::time_point startTime_;
+	// Timeout tracking via global TimeoutManager
+	TimeoutOwner cgiTimer;
 	static constexpr std::chrono::seconds CGI_TIMEOUT_LIMIT = std::chrono::seconds(30);
 
 	// Backpressure thresholds
