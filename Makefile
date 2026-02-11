@@ -16,6 +16,7 @@ SRCS := $(addprefix $(SRCDIR)/,\
 	CallbackQueue.cpp \
 	ChunkHeaderReader.cpp \
 	ClientHandler.cpp \
+	ConnectionManager.cpp \
 	RequestHeader.cpp \
 	HeaderFields.cpp \
 	HeaderUtil.cpp \
@@ -37,6 +38,7 @@ SRCS := $(addprefix $(SRCDIR)/,\
 	DeleteRequestHandler.cpp \
 	Utils.cpp \
 	MimeTypes.cpp \
+	Signals.cpp \
 )
 
 # Project targets
