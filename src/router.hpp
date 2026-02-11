@@ -26,10 +26,10 @@ typedef std::unique_ptr<IRequestHandler> RequestHandlerPtr;
 const RouteConfig *matchRoute(const std::string &path, const std::string &method, const ServerConfig &config);
 
 /**
- * Main router function. Selects the appropriate route, then returns the correct handler.
+ * Construct the appropriate request handler for the request, given the matched route config.
  * @param manager The request manager.
  * @param header The HTTP request header object.
- * @param config The server configuration for the current request.
+ * @param route Route configuration selected by `matchRoute`.
  * @return A pointer to the appropriate request handler.
  */
-RequestHandlerPtr router(IRequestManager &manager, const RequestHeader &header, const ServerConfig &config, const RouteConfig &route);
+RequestHandlerPtr handleRequestForRoute(IRequestManager &manager, const RequestHeader &header, const RouteConfig &route);

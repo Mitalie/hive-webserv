@@ -80,12 +80,17 @@ private:
 	bool useBodyLenMax = false;
 	size_t bodyLen = 0;
 	size_t bodyLenMax = 0;
-	std::unique_ptr<IRequestHandler> createRequestHandler(RequestHeader &&header);
+	void createRequestHandler(RequestHeader &&header);
 	void handleDataBody();
 	void handleDataChunkHeader();
 	void handleDataRequestHeader();
 	void handleData();
 	bool isBodyDone();
+
+	/* Error handling and termination */
+
+	const ServerConfig *currentRequestConfig;
+	std::optional<int> currentError = std::nullopt;
 	void terminateRequest(std::optional<int> errorStatus);
 
 	class TerminateRequestException : public DelayedCleanupBase

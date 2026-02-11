@@ -10,17 +10,14 @@
 
 #include "Config.hpp"
 #include "IRequestManager.hpp"
-#include "RequestHeader.hpp"
 
 // Constructor without custom error pages (backward compatibility)
 ErrorRequestHandler::ErrorRequestHandler(
 	IRequestManager &manager,
-	const RequestHeader &header,
 	const ServerConfig &config,
 	int code)
-	: manager_(manager), header_(header), config_(config), code_(code)
+	: manager_(manager), config_(config), code_(code)
 {
-	(void)header_; // TODO: Remove from class if not used
 	sendResponse();
 	manager_.onRequestDone();
 }

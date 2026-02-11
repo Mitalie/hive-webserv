@@ -8,14 +8,12 @@
 #include "Config.hpp"
 #include "IRequestHandler.hpp"
 #include "IRequestManager.hpp"
-#include "RequestHeader.hpp"
 
 class ErrorRequestHandler : public IRequestHandler
 {
 public:
 	ErrorRequestHandler(
 		IRequestManager &manager,
-		const RequestHeader &header,
 		const ServerConfig &config,
 		int code);
 	~ErrorRequestHandler();
@@ -25,7 +23,6 @@ public:
 
 private:
 	IRequestManager &manager_;
-	const RequestHeader &header_;
 	const ServerConfig &config_;
 	int code_;
 	void sendResponse();

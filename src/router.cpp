@@ -18,7 +18,6 @@
 #include "CgiRequestHandler.hpp"
 #include "UploadRequestHandler.hpp"
 #include "RedirectRequestHandler.hpp"
-#include "ErrorRequestHandler.hpp"
 #include "AutoindexRequestHandler.hpp"
 #include "DeleteRequestHandler.hpp"
 
@@ -131,7 +130,6 @@ bool hasCgiExtension(const std::filesystem::path &path, const std::map<std::stri
 std::unique_ptr<IRequestHandler> handleRequestOnPath(
 	IRequestManager &manager,
 	const RequestHeader &header,
-	const ServerConfig &server,
 	const RouteConfig &route,
 	std::filesystem::path path,
 	const std::string &urlPath)
@@ -165,14 +163,14 @@ std::unique_ptr<IRequestHandler> handleRequestOnPath(
 				return std::make_unique<AutoindexRequestHandler>(manager, path, header.path(), !isRoot);
 			else
 				// No index file and autoindex disabled
-				return std::make_unique<ErrorRequestHandler>(manager, header, server, 404); // Forbidden
+				manager.onRequestError(404); // Not found
 		}
 		else if (route.autoindex)
 			// No index configured but autoindex is enabled
 			return std::make_unique<AutoindexRequestHandler>(manager, path, header.path(), !isRoot);
 		else
 			// Directory request with no index and no autoindex
-			return std::make_unique<ErrorRequestHandler>(manager, header, server, 403); // Forbidden
+			manager.onRequestError(403); // Forbidden
 	}
 
 	// Check for CGI match (after directory logic, so index.php is caught)
@@ -183,18 +181,18 @@ std::unique_ptr<IRequestHandler> handleRequestOnPath(
 
 	// 7. Final File Checks
 	if (!std::filesystem::exists(path) || !std::filesystem::is_regular_file(path))
-		return std::make_unique<ErrorRequestHandler>(manager, header, server, 404);
+		manager.onRequestError(404);
 
 	auto perms = std::filesystem::status(path).permissions();
 	if ((perms & std::filesystem::perms::owner_read) == std::filesystem::perms::none)
 		// No read permission
-		return std::make_unique<ErrorRequestHandler>(manager, header, server, 403); // Forbidden
+		manager.onRequestError(403); // Forbidden
 
 	return std::make_unique<FileRequestHandler>(manager, path.c_str());
 }
 
 // =========================
-// Helper: Handle Request for Route
+// Main Router Function: Handle Request for Route
 // =========================
 /**
  * Handles a request for a specific route, returning the appropriate handler.
@@ -203,14 +201,13 @@ std::unique_ptr<IRequestHandler> handleRequestOnPath(
 std::unique_ptr<IRequestHandler> handleRequestForRoute(
 	IRequestManager &manager,
 	const RequestHeader &header,
-	const ServerConfig &server,
 	const RouteConfig &route)
 {
 	std::string urlPath = stripQueryString(header.path());
 
 	// 1. Check if method is allowed for this route
 	if (!isMethodAllowed(header.method(), route.allowedMethods))
-		return std::make_unique<ErrorRequestHandler>(manager, header, server, 405); // Method Not Allowed
+		manager.onRequestError(405); // Method Not Allowed
 
 	// 2. Handle redirect if specified
 	if (!route.redirect.empty())
@@ -227,7 +224,7 @@ std::unique_ptr<IRequestHandler> handleRequestForRoute(
 	while (true)
 	{
 		if (!isPathWithinRoot(current, route.root))
-			return std::make_unique<ErrorRequestHandler>(manager, header, server, 403);
+			manager.onRequestError(403);
 
 		// Check for CGI match (Priority over existence for "Allow Nonexistent")
 		if (hasCgiExtension(current, route.cgiInterpreters))
@@ -249,7 +246,7 @@ std::unique_ptr<IRequestHandler> handleRequestForRoute(
 
 	// Fallback: If traversal finished without returning, use the full resolved path.
 	std::filesystem::path fullPath = resolveRoutePath(urlPath, route);
-	return handleRequestOnPath(manager, header, server, route, fullPath, urlPath);
+	return handleRequestOnPath(manager, header, route, fullPath, urlPath);
 }
 
 // =========================
@@ -293,12 +290,4 @@ const RouteConfig *matchRoute(const std::string &path, const std::string &method
 	}
 
 	return candidate;
-}
-
-// =========================
-// Main Router Function
-// =========================
-std::unique_ptr<IRequestHandler> router(IRequestManager &manager, const RequestHeader &header, const ServerConfig &server, const RouteConfig &route)
-{
-	return handleRequestForRoute(manager, header, server, route);
 }

@@ -112,9 +112,10 @@ void ClientHandler::destroyConnection()
 	manager.destroyConnection(*this);
 }
 
-std::unique_ptr<IRequestHandler> ClientHandler::createRequestHandler(RequestHeader &&header)
+void ClientHandler::createRequestHandler(RequestHeader &&header)
 {
 	const ServerConfig &serverConfig = findServerConfig(header, config);
+	currentRequestConfig = &serverConfig;
 	chunked = false;
 	bodyLen = 0;
 	// partialHeaderPending remains set until request framing is determined to
@@ -124,13 +125,13 @@ std::unique_ptr<IRequestHandler> ClientHandler::createRequestHandler(RequestHead
 	TransferEncodingResult te = getTransferEncoding(header.fields);
 	ContentLengthResult cl = getContentLength(header.fields);
 	if (te.present && cl.present) // Both T-E and C-L specified? Might be malicious
-		return std::make_unique<ErrorRequestHandler>(*this, std::move(header), serverConfig, 400);
+		return terminateRequest(400);
 	if (te.chunkedNotFinal) // Chunked is not final T-E, can't use it to detect end
-		return std::make_unique<ErrorRequestHandler>(*this, std::move(header), serverConfig, 400);
+		return terminateRequest(400);
 	if (te.unknown) // Unsupported T-E value, don't know how to decode
-		return std::make_unique<ErrorRequestHandler>(*this, std::move(header), serverConfig, 501);
+		return terminateRequest(501);
 	if (cl.invalid) // C-L does not parse cleanly, can't use it to detect end
-		return std::make_unique<ErrorRequestHandler>(*this, std::move(header), serverConfig, 400);
+		return terminateRequest(400);
 	// Framing successfully determined
 	chunked = te.chunked;
 	bodyLen = cl.length;
@@ -138,7 +139,7 @@ std::unique_ptr<IRequestHandler> ClientHandler::createRequestHandler(RequestHead
 
 	const RouteConfig *route = matchRoute(header.path(), header.method(), serverConfig);
 	if (!route)
-		return std::make_unique<ErrorRequestHandler>(*this, std::move(header), serverConfig, 404);
+		return terminateRequest(404);
 
 	// Determine effective max body size
 	if (route->clientMaxBodySize.has_value())
@@ -149,10 +150,15 @@ std::unique_ptr<IRequestHandler> ClientHandler::createRequestHandler(RequestHead
 	// Early check for excess body size if bodyLen already known
 	useBodyLenMax = bodyLenMax > 0;
 	if (useBodyLenMax && bodyLen > bodyLenMax)
-		return std::make_unique<ErrorRequestHandler>(*this, std::move(header), serverConfig, 413);
+		return terminateRequest(413);
 
-	// Use router to select and create the appropriate handler
-	return router(*this, std::move(header), serverConfig, *route);
+	// Use router function to select and construct the appropriate handler
+	// Handle exception in case the handler completes or errors within constructor
+	handleDelayedCleanup<TerminateRequestException>(
+		[this, &header, route]
+		{
+			request = handleRequestForRoute(*this, std::move(header), *route);
+		});
 }
 
 void ClientHandler::handleDataRequestHeader()
@@ -162,12 +168,7 @@ void ClientHandler::handleDataRequestHeader()
 	// The reader will consume bytes until end of header
 	std::optional<RequestHeader> header = headerReader.tryParse(availableData);
 	if (header)
-		// Request handler constructors may throw TerminateRequestException, catch it here
-		handleDelayedCleanup<TerminateRequestException>(
-			[this, &header]
-			{
-				request = createRequestHandler(std::move(*header));
-			});
+		createRequestHandler(std::move(*header));
 }
 
 void ClientHandler::handleDataChunkHeader()
@@ -356,18 +357,40 @@ void ClientHandler::terminateRequest(std::optional<int> errorStatus)
 		// Request handler completed successfully
 		readingPaused = false;
 		unfinishedResponseBytes = 0;
+		currentError = std::nullopt;
 	}
-	else if (unfinishedResponseBytes == 0)
-	{
-		// Request handler failed without output, send error response instead
-		// TODO construct ErrorRequestHandler or write response manually?
-	}
-	else
+	else if (unfinishedResponseBytes > 0)
 	{
 		// Request handler failed with output
 		// The unfinished output makes the connection unusable, so just wait
 		// for any finished responses to drain and then terminate connection.
 		terminateConnection = true;
+	}
+	else if (!currentError)
+	{
+		// Request handler failed without output, send error response instead
+		currentError = errorStatus;
+		handleDelayedCleanup<TerminateRequestException>(
+			[this, errorStatus]
+			{
+				request = std::make_unique<ErrorRequestHandler>(*this, *currentRequestConfig, *errorStatus);
+			});
+	}
+	else
+	{
+		// ErrorRequestHandler failed, output minimal error instead of trying again
+		std::string errorBody =
+			"Error handler for status code " +
+			std::to_string(*currentError) +
+			"failed.";
+		writeResponseData(
+			"HTTP/1.1 500 Internal Server Error\r\n"
+			"Content-Type: text/plain\r\n"
+			"Content-Length: " +
+			std::to_string(errorBody.size()) + "\r\n" +
+			"\r\n" +
+			errorBody);
+		terminateRequest(std::nullopt);
 	}
 	updateWakeup();
 }
