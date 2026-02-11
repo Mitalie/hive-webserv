@@ -3,29 +3,21 @@
 #include <cstddef>
 #include <map>
 #include <sstream>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
-
-#include "Utils.hpp"
 
 RequestHeader::RequestHeader(const std::string_view &raw)
 {
 	// Find end of first line (request-line)
 	size_t lineEnd = raw.find("\r\n");
 	if (lineEnd == std::string_view::npos)
-		throw std::runtime_error("empty request (no request-line)");
-
-	// Use Utils::trim on string_view
-	std::string line(trim(raw.substr(0, lineEnd)));
-	if (line.empty())
-		throw std::runtime_error("empty request-line");
+		throw BadRequestHeader("No request-line");
 
 	// Parse request-line: METHOD PATH VERSION
-	std::istringstream rl(line);
+	std::istringstream rl(std::string(raw.substr(0, lineEnd)));
 	if (!(rl >> method_ >> path_ >> version_))
-		throw std::runtime_error("invalid request-line: expected 'METHOD PATH VERSION'");
+		throw BadRequestHeader("Invalid request-line: expected 'METHOD PATH VERSION'");
 
 	// Parse remaining header fields
 	std::string_view remaining = raw.substr(lineEnd + 2);

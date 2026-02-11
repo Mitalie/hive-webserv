@@ -4,7 +4,6 @@
 #include <cstddef>
 #include <optional>
 #include <span>
-#include <stdexcept>
 #include <string_view>
 
 #include "RequestHeader.hpp"
@@ -26,7 +25,7 @@ std::optional<RequestHeader> RequestHeaderReader::tryParse(std::span<const char>
 	{
 		// End not found at max size - reject client
 		if (buffer.size() == maxHeaderLen)
-			throw std::runtime_error("Request headers too long");
+			throw BadRequestHeader("Request headers too long");
 		// End not found - consume all and return nothing
 		incomingData = {};
 		return std::nullopt;

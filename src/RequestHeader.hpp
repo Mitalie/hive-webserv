@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -24,7 +25,7 @@ public:
 	HeaderFields fields;
 
 	// Construct and parse from raw HTTP request header text (request-line + header fields).
-	// Throws std::runtime_error on parse failure.
+	// Throws BadRequestHeader or BadHeaderFields on parse failure.
 	RequestHeader(const std::string_view &raw);
 
 	// Accessors for request-line
@@ -40,4 +41,10 @@ private:
 	std::string method_;  // stores the HTTP method (e.g., GET, POST)
 	std::string path_;	  // stores the request path/URI
 	std::string version_; // stores the HTTP version string (e.g., HTTP/1.1)
+};
+
+class BadRequestHeader : public std::runtime_error
+{
+	// Inherit constructors
+	using std::runtime_error::runtime_error;
 };

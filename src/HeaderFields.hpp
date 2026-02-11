@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -61,4 +62,10 @@ public:
 
 private:
 	std::map<std::string, std::vector<std::string>> headers_;
+};
+
+class BadHeaderFields : public std::runtime_error
+{
+	// Inherit constructors
+	using std::runtime_error::runtime_error;
 };

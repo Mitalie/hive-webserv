@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <optional>
 #include <span>
+#include <stdexcept>
 #include <string>
 
 /*
@@ -29,4 +30,10 @@ private:
 	std::optional<size_t> consumeTrailers(std::span<const char> &incomingData);
 	static const size_t maxChunkHeaderLen = 64; // over 16 hex digits already overflows 64-bit size_t, but allow some leading zeroes
 	static const size_t maxTrailerLen = 16384;
+};
+
+class BadChunkedBody : public std::runtime_error
+{
+	// Inherit constructors
+	using std::runtime_error::runtime_error;
 };

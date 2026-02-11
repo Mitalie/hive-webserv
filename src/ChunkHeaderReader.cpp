@@ -6,7 +6,6 @@
 #include <cstdint>
 #include <optional>
 #include <span>
-#include <stdexcept>
 #include <string_view>
 
 /*
@@ -64,7 +63,7 @@ static int hexDigitValue(char c)
 static size_t parseHeaderLine(std::string_view headerLine)
 {
 	if (headerLine.empty())
-		throw std::runtime_error("Empty chunk header");
+		throw BadChunkedBody("Empty chunk header");
 
 	size_t chunkSize = 0;
 	size_t i = 0;
@@ -72,7 +71,7 @@ static size_t parseHeaderLine(std::string_view headerLine)
 	// Must start with at least one hex digit
 	int digit = hexDigitValue(headerLine[i]);
 	if (digit < 0)
-		throw std::runtime_error("Invalid chunk size: no hex digits");
+		throw BadChunkedBody("Invalid chunk size: no hex digits");
 
 	// Parse hex digits
 	while (i < headerLine.length())
@@ -82,7 +81,7 @@ static size_t parseHeaderLine(std::string_view headerLine)
 			break;
 		// Check for overflow
 		if (chunkSize > (SIZE_MAX >> 4))
-			throw std::runtime_error("Chunk size overflow");
+			throw BadChunkedBody("Chunk size overflow");
 		chunkSize = (chunkSize << 4) | digit;
 		i++;
 	}
@@ -115,7 +114,7 @@ std::optional<size_t> ChunkHeaderReader::tryParse(std::span<const char> &incomin
 		if (buffer[0] == CRLF[0] && buffer[1] == CRLF[1])
 			scanStart = 2;
 		else
-			throw std::runtime_error("Expected CRLF after chunk data");
+			throw BadChunkedBody("Expected CRLF after chunk data");
 	}
 
 	// Look for end of chunk header line (CRLF)
@@ -124,7 +123,7 @@ std::optional<size_t> ChunkHeaderReader::tryParse(std::span<const char> &incomin
 	{
 		// Header line not complete
 		if (buffer.size() >= maxChunkHeaderLen)
-			throw std::runtime_error("Chunk header too long");
+			throw BadChunkedBody("Chunk header too long");
 		incomingData = {};
 		return std::nullopt;
 	}
@@ -183,7 +182,7 @@ std::optional<size_t> ChunkHeaderReader::consumeTrailers(std::span<const char> &
 	if (trailerEnd == std::string::npos)
 	{
 		if (buffer.size() >= maxTrailerLen)
-			throw std::runtime_error("Trailers too long");
+			throw BadChunkedBody("Trailers too long");
 		incomingData = {};
 		return std::nullopt;
 	}
