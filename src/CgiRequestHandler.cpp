@@ -22,8 +22,7 @@
 CgiRequestHandler::CgiRequestHandler(IRequestManager &manager, const RequestHeader &header, const RouteConfig &route, const std::string &scriptPath)
 	: manager_(manager),
 	  storedHeader_(header),
-	  scriptPath_(scriptPath),
-	  startTime_(std::chrono::steady_clock::now())
+	  scriptPath_(scriptPath)
 {
 	// Determine script path and interpreter
 	interpreter_ = findInterpreter(scriptPath_, route);
@@ -75,6 +74,11 @@ void CgiRequestHandler::launchCgiProcess()
 			},
 			// Ignore child closing std in pipe.
 			ReadWriteFD::WritableErrorCallback{});
+
+		// Use the existing checkTimeout function you already have.
+		// No new variables, just triggering your existing logic.
+		cgiTimer.resetTimeout(CGI_TIMEOUT_LIMIT, [this]()
+							  { checkTimeout(); });
 	}
 	catch (const std::exception &e)
 	{
@@ -127,6 +131,9 @@ void CgiRequestHandler::sendBodyData(std::span<const char> data)
 
 void CgiRequestHandler::handleCgiEof()
 {
+	// Cancel the timer so it doesn't fire after a successful exit.
+	cgiTimer.resetTimeout(std::chrono::seconds(0), nullptr);
+
 	// 1. No headers sent yet
 	if (!headersParsed_)
 	{
@@ -239,14 +246,21 @@ std::string CgiRequestHandler::findInterpreter(const std::string &scriptPath, co
 void CgiRequestHandler::checkTimeout()
 {
 	if (responseFinished_)
-		return;
-
-	auto now = std::chrono::steady_clock::now();
-	if (now - startTime_ > CGI_TIMEOUT_LIMIT)
 	{
-		std::cerr << "[CGI] Timeout reached (" << CGI_TIMEOUT_LIMIT.count() << "s). Terminating." << std::endl;
-		manager_.onRequestError();
+		return;
 	}
+
+	std::cerr << "[CGI] Timeout reached. Terminating." << std::endl;
+
+	// 1. Lock the handler so no more data is processed
+	responseFinished_ = true;
+
+	// 2. Kill the CGI process immediately to close pipes
+	cgiHandler_.reset();
+
+	// 3. Inform manager. Even if the throw isn't caught in main,
+	// the handler is already neutralized.
+	manager_.onRequestError(504);
 }
 
 void CgiRequestHandler::onBodyData(std::span<const char> data)

@@ -7,6 +7,7 @@
 #include "ConnectionManager.hpp"
 #include "Poll.hpp"
 #include "Signals.hpp"
+#include "Timeout.hpp"
 
 int main(int argc, char *argv[])
 {
@@ -27,9 +28,11 @@ int main(int argc, char *argv[])
 	while (true)
 	{
 		// Signal may arrive between gotExitSignal and poll syscall.
-		// Set timeout to ensure we react to signal reasonably quickly.
+		// Timeout may expire before or during poll syscall.
+		// Set poll timeout to ensure we react to signals and timeouts reasonably quickly.
 		Poll::doPoll(100);
 		CallbackQueue::handleQueue();
+		TimeoutManager::processTimeouts();
 		if (gotExitSignal())
 			break;
 	}

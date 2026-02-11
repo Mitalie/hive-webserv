@@ -240,6 +240,8 @@ void ClientHandler::processData()
 
 void ClientHandler::socketReadCallback(std::span<const char> newData)
 {
+	activityTimer.resetTimeout(std::chrono::seconds(60), [this]()
+							   { destroyConnection(); });
 	// Use read buffer directly to avoid unnecessary copying
 	availableData = newData;
 	processData();
@@ -271,6 +273,8 @@ void ClientHandler::bufferedDataCallback()
 
 void ClientHandler::socketWriteCallback(size_t bufferSize)
 {
+	activityTimer.resetTimeout(std::chrono::seconds(60), [this]()
+							   { destroyConnection(); });
 	bufferedResponseBytes = bufferSize;
 	if (request)
 		handleDelayedCleanup<TerminateRequestException>(

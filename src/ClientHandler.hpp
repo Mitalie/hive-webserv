@@ -14,6 +14,7 @@
 #include "IRequestManager.hpp"
 #include "IRequestHandler.hpp"
 #include "ReadWriteFD.hpp"
+#include "Timeout.hpp"
 #include "UnixFD.hpp"
 
 class Poll;
@@ -49,6 +50,7 @@ private:
 	const ListenerConfig &config;
 	ConnectionManager &manager;
 	CallbackQueue::CallbackOwner cbOwner;
+	TimeoutOwner activityTimer;
 	void destroyConnection();
 
 	/* IO handling and buffering */
