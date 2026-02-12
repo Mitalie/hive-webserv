@@ -24,7 +24,7 @@ void TimeoutManager::processTimeouts()
 		entry->owner->callback = nullptr;
 		instance.queue.erase(entry);
 		if (callback)
-			handleDelayedCleanup<DelayedCleanupBase>(callback);
+			handleAllDelayedCleanup(callback);
 	}
 }
 
