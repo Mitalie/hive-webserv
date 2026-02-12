@@ -98,10 +98,9 @@ void FileRequestHandler::sendData()
 			bytesRead = bytesRemaining_;
 		bytesRemaining_ -= bytesRead;
 		size_t bufferSize = manager_.writeResponseData(std::span(readBuffer, bytesRead));
-		if (bytesRemaining_ == 0)
-			return manager_.onRequestDone();
-		if (bufferSize >= BUFFER_LIMIT)
+		if (bytesRemaining_ && bufferSize >= BUFFER_LIMIT)
 			// buffer full, wait for notifyResponseBuffer
 			return;
 	}
+	manager_.onRequestDone();
 }
