@@ -31,7 +31,7 @@ void CallbackQueue::handleQueue()
 	{
 		// This function should only be called from main, so it should be safe
 		// to do *any* delayed cleanup here
-		handleDelayedCleanup<DelayedCleanupBase>(instance.queue[i].cb);
+		handleAllDelayedCleanup(instance.queue[i].cb);
 	}
 	instance.queue.clear();
 }

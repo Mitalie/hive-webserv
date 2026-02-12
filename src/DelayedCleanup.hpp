@@ -62,3 +62,48 @@ void handleDelayedCleanup(Callable &&callable, Args &&...args)
 		static_cast<const DelayedCleanupBase &>(ex).cleanup();
 	}
 }
+
+/*
+	Invoke `callable` with `args` and automatically handle all delayed cleanup
+	exceptions, even if the `cleanup` function of one exception throws another.
+
+	Use a lambda for `callable` to wrap more than a single function call in the
+	same try-catch.
+*/
+template <typename Callable, typename... Args>
+	requires(std::invocable<Callable, Args...>)
+void handleAllDelayedCleanup(Callable &&callable, Args &&...args)
+{
+	/*
+		If `ex.cleanup()` throws another DelayedCleanupException, it leaks out
+		of `handleDelayedCleanup`. We want to catch and handle that exception
+		too, until no more are thrown.
+
+		The original exception object is destroyed at end of the catch block,
+		and we can't directly copy the object without knowing its actual derived
+		type, so use `std::exception_ptr` for storing it.
+
+		We can't directly access the object through `std::exception_ptr`, but
+		`std::rethrow_exception` makes it catchable again.
+	*/
+	std::exception_ptr caught;
+	do
+	{
+		try
+		{
+			if (!caught) // First iteration
+				handleDelayedCleanup<DelayedCleanupBase>(
+					std::forward<Callable>(callable),
+					std::forward<Args>(args)...);
+			else // Looped with a leaked exception
+			{
+				handleDelayedCleanup<DelayedCleanupBase>(std::rethrow_exception, caught);
+				caught = nullptr;
+			}
+		}
+		catch (const DelayedCleanupBase &ex)
+		{
+			caught = std::current_exception();
+		}
+	} while (caught);
+}
