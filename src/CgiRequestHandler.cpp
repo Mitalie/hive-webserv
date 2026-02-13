@@ -22,7 +22,7 @@
 CgiRequestHandler::CgiRequestHandler(IRequestManager &manager, const RequestHeader &header, const RouteConfig &route, const std::string &scriptPath)
 	: manager_(manager),
 	  storedHeader_(header),
-	  scriptPath_(scriptPath)
+	  scriptPath_(std::filesystem::absolute(scriptPath).string())
 {
 	// Determine script path and interpreter
 	interpreter_ = findInterpreter(scriptPath_, route);
@@ -237,6 +237,9 @@ std::string CgiRequestHandler::findInterpreter(const std::string &scriptPath, co
 	auto it = route.cgiInterpreters.find(extension);
 	if (it != route.cgiInterpreters.end())
 	{
+		std::filesystem::path interpreterPath(it->second);
+		if (interpreterPath.is_relative())
+			return std::filesystem::absolute(interpreterPath).string();
 		return it->second;
 	}
 

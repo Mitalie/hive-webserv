@@ -226,6 +226,14 @@ void CgiHandler::setupChild()
 		queryString = scriptPath.substr(qPos + 1);
 	}
 
+	size_t lastSlash = cleanScriptPath.find_last_of('/');
+    if (lastSlash != std::string::npos)
+    {
+        std::string scriptDir = cleanScriptPath.substr(0, lastSlash);
+        if (chdir(scriptDir.c_str()) < 0)
+            exit(1); 
+    }
+
 	// 5. Prepare Environment and Args
 	std::vector<std::string> envStrs = createEnvVariables(cleanScriptPath, queryString);
 
