@@ -23,7 +23,6 @@ private:
 	size_t bytesRemaining_;
 	UnixFD fd_;
 
-	void sendErrorResponse(int code, const std::string &message);
 	void start(const char *filePath);
 	void sendData();
 

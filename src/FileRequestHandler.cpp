@@ -36,44 +36,37 @@ void FileRequestHandler::notifyResponseBuffer(size_t bufferSize)
 		sendData();
 }
 
-void FileRequestHandler::sendErrorResponse(int code, const std::string &message)
-{
-	std::string statusText = (code == 200) ? "OK" : "Error";
-	std::string header =
-		"HTTP/1.1 " + std::to_string(code) + " " + statusText +
-		"\r\n"
-		"Content-Type: text/plain\r\n"
-		"Content-Length: " +
-		std::to_string(message.size()) +
-		"\r\n\r\n" +
-		message;
-	manager_.writeResponseData(std::span<const char>(header.data(), header.size()));
-	manager_.onRequestDone();
-}
-
 void FileRequestHandler::start(const char *filePath)
 {
 	fd_ = UnixFD(open(filePath, O_RDONLY));
 	if (fd_ == -1)
 	{
-		if (errno == ENOENT)
-			sendErrorResponse(404, "File not found");
-		else
-			sendErrorResponse(500, "Could not open file");
+		switch (errno)
+		{
+		case ENOENT:
+			manager_.onRequestError(404);
+			break;
+		case EACCES:
+			manager_.onRequestError(403);
+			break;
+		default:
+			manager_.onRequestError(500);
+			break;
+		}
 		return;
 	}
 	struct stat st;
 	// Should use fstat here to prevent rename race condition, but assignment doesn't allow it...
 	if (stat(filePath, &st) == -1)
 	{
-		sendErrorResponse(500, "Could not stat file");
+		manager_.onRequestError(500);
 		return;
 	}
 	bytesRemaining_ = st.st_size;
 	std::string header =
 		"HTTP/1.1 200 OK\r\n"
 		"Content-Type: " + MimeTypes::getType(filePath) + "\r\n"
-		"Content-Length: " +
+									   "Content-Length: " +
 		std::to_string(st.st_size) +
 		"\r\n\r\n";
 	manager_.writeResponseData(header);
@@ -90,8 +83,28 @@ void FileRequestHandler::sendData()
 	{
 		ssize_t result = read(fd_, readBuffer, CHUNK_SIZE);
 		if (result <= 0)
-			// error or unexpected EOF - we may have sent data already so trash the connection
-			return manager_.onRequestError();
+		{
+			if (result < 0)
+			{
+				switch (errno)
+				{
+				case EACCES:
+					manager_.onRequestError(403);
+					break;
+				case EIO:
+					manager_.onRequestError(500);
+					break;
+				default:
+					manager_.onRequestError(502);
+					break;
+				}
+			}
+			else
+			{
+				manager_.onRequestError(502);
+			}
+			return;
+		}
 		size_t bytesRead = result;
 		if (bytesRead > bytesRemaining_)
 			// race condition - file grew, we limit to size we sent in C-L header
