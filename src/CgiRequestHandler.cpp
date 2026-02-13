@@ -19,10 +19,11 @@
 #include "ReadWriteFD.hpp"
 #include "RequestHeader.hpp"
 
-CgiRequestHandler::CgiRequestHandler(IRequestManager &manager, const RequestHeader &header, const RouteConfig &route, const std::string &scriptPath)
+CgiRequestHandler::CgiRequestHandler(IRequestManager &manager, const RequestHeader &header, const RouteConfig &route, const std::string &scriptPath, const std::string &pathInfo)
 	: manager_(manager),
 	  storedHeader_(header),
-	  scriptPath_(std::filesystem::absolute(scriptPath).string())
+	  scriptPath_(std::filesystem::absolute(scriptPath).string()),
+	  pathInfo_(pathInfo)
 {
 	// Determine script path and interpreter
 	interpreter_ = findInterpreter(scriptPath_, route);
@@ -53,6 +54,7 @@ void CgiRequestHandler::launchCgiProcess()
 		cgiHandler_ = std::make_unique<CgiHandler>(
 			storedHeader_,
 			scriptPath_,
+			pathInfo_,
 			interpreter_,
 			[this](std::span<const char> data)
 			{

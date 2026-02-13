@@ -34,6 +34,7 @@ public:
 	*/
 	CgiHandler(RequestHeader header,
 			   std::string scriptPath,
+			   std::string pathInfo,
 			   std::string interpreterPath,
 			   ReadWriteFD::ReadableDataCallback stdoutReadCallback,
 			   ReadWriteFD::ReadableEofCallback stdoutEofCallback,
@@ -69,10 +70,11 @@ private:
 	void onStdinDrain(size_t bufferSize, ReadWriteFD::WritableDrainCallback originalCallback);
 
 	// Helper to translate HTTP headers into CGI environment format
-	std::vector<std::string> createEnvVariables(const std::string &scriptName, const std::string &queryStr);
+	std::vector<std::string> createEnvVariables(const std::string &scriptName);
 
 	RequestHeader header;
 	std::string scriptPath;
+	std::string pathInfo;
 	std::string interpreterPath;
 
 	CallbackQueue::CallbackOwner cbOwner;
