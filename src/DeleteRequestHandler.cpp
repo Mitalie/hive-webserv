@@ -1,5 +1,6 @@
 #include "DeleteRequestHandler.hpp"
 
+#include <cerrno>
 #include <cstddef>
 #include <span>
 #include <string>
@@ -10,11 +11,31 @@
 
 DeleteRequestHandler::DeleteRequestHandler(IRequestManager &manager, const char *filePath)
 {
-	int res = unlink(filePath);
-	if (res)
-		sendResponse(manager, 500, "Internal Server Error", "Failed to delete file");
-	else
+	if (unlink(filePath) == 0)
+	{
 		sendResponse(manager, 200, "OK", "File deleted successfully");
+	}
+	else
+	{
+		switch (errno)
+		{
+		case ENOENT:
+		case ENOTDIR:
+			manager.onRequestError(404);
+			break;
+
+		case EACCES:
+		case EPERM:
+		case EROFS:
+		case EISDIR:
+			manager.onRequestError(403);
+			break;
+
+		default:
+			manager.onRequestError(500);
+			break;
+		}
+	}
 }
 
 void DeleteRequestHandler::onBodyData(std::span<const char> /*data*/)

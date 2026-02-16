@@ -42,16 +42,7 @@ void AutoindexRequestHandler::generateDirectoryListing()
 	// Verify directory exists
 	if (!std::filesystem::is_directory(dir_))
 	{
-		std::string errorBody = "Directory not found";
-		std::string response =
-			"HTTP/1.1 404 Not Found\r\n"
-			"Content-Type: text/plain\r\n"
-			"Content-Length: " +
-			std::to_string(errorBody.size()) +
-			"\r\n\r\n" +
-			errorBody;
-		manager_.writeResponseData(response);
-		manager_.onRequestDone();
+		manager_.onRequestError(404);
 		return;
 	}
 

@@ -20,9 +20,7 @@ UploadRequestHandler::UploadRequestHandler(IRequestManager &manager, const Reque
 	{
 		if (!std::filesystem::create_directories(route_.uploadStore, ec))
 		{
-			sendResponse(500, "Upload directory does not exist and could not be created");
-			manager_.onRequestDone();
-			done_ = true;
+			manager_.onRequestError(403);
 			return;
 		}
 	}
@@ -58,9 +56,7 @@ UploadRequestHandler::UploadRequestHandler(IRequestManager &manager, const Reque
 	std::string contentType = header_.get("Content-Type");
 	if (contentType.find("multipart/form-data") == std::string::npos)
 	{
-		sendResponse(415, "Unsupported Media Type: Only multipart/form-data supported");
-		manager_.onRequestDone();
-		done_ = true;
+		manager_.onRequestError(415);
 		return;
 	}
 
@@ -68,9 +64,7 @@ UploadRequestHandler::UploadRequestHandler(IRequestManager &manager, const Reque
 	size_t pos = contentType.find("boundary=");
 	if (pos == std::string::npos)
 	{
-		sendResponse(400, "Malformed multipart/form-data: missing boundary");
-		manager_.onRequestDone();
-		done_ = true;
+		manager_.onRequestError(400);
 		return;
 	}
 	boundary_ = "--" + contentType.substr(pos + 9);
@@ -101,9 +95,7 @@ void UploadRequestHandler::onBodyData(std::span<const char> data)
 		outFile_.open(targetPath_, std::ios::binary | std::ios::out);
 		if (!outFile_)
 		{
-			sendResponse(500, "Failed to open file for upload");
-			manager_.onRequestDone();
-			done_ = true;
+			manager_.onRequestError(500);
 			return;
 		}
 		fileOpen_ = true;
@@ -116,18 +108,15 @@ void UploadRequestHandler::onBodyData(std::span<const char> data)
 			outFile_.write(multipartBuffer_.data() + fileDataStart, multipartBuffer_.size() - fileDataStart);
 		if (!outFile_)
 		{
-			sendResponse(500, "Write error during upload");
-			manager_.onRequestDone();
-			done_ = true;
+			manager_.onRequestError(507);
 			return;
 		}
 		// If boundary found, upload is done
 		if (boundaryPos != std::string::npos)
 		{
 			outFile_.close();
-			sendResponse(201, "File uploaded successfully");
-			manager_.onRequestDone();
-			done_ = true;
+			uploadComplete("File uploaded successfully");
+
 			return;
 		}
 		// Remove processed header portion, keep remaining data
@@ -147,18 +136,14 @@ void UploadRequestHandler::onBodyData(std::span<const char> data)
 				{
 					outFile_.close();
 				}
-				sendResponse(400, "Malformed multipart data");
-				manager_.onRequestDone();
-				done_ = true;
+				manager_.onRequestError(400);
 				return;
 			}
 			// Write up to boundary (excluding trailing \r\n)
 			size_t fileDataEnd = boundaryPos - 2;
 			outFile_.write(multipartBuffer_.data(), fileDataEnd);
 			outFile_.close();
-			sendResponse(201, "File uploaded successfully");
-			manager_.onRequestDone();
-			done_ = true;
+			uploadComplete("File uploaded successfully");
 			return;
 		}
 		else
@@ -175,9 +160,7 @@ void UploadRequestHandler::onBodyData(std::span<const char> data)
 		}
 		if (!outFile_)
 		{
-			sendResponse(500, "Write error during upload");
-			manager_.onRequestDone();
-			done_ = true;
+			manager_.onRequestError(500);
 			return;
 		}
 	}
@@ -197,9 +180,7 @@ void UploadRequestHandler::onBodyDone()
 		std::filesystem::remove(targetPath_);
 
 		// 3. Send error and mark done
-		sendResponse(400, "Bad Request: Incomplete multipart body");
-		manager_.onRequestDone();
-		done_ = true;
+		manager_.onRequestError(400);
 	}
 }
 
@@ -208,30 +189,16 @@ void UploadRequestHandler::notifyResponseBuffer(size_t /*bufferSize*/)
 	// No buffering logic for upload
 }
 
-void UploadRequestHandler::sendResponse(int code, const std::string &message)
+void UploadRequestHandler::uploadComplete(const std::string &message)
 {
-	std::string statusText;
-	switch (code)
-	{
-	case 201:
-		statusText = "Created";
-		break;
-	case 400:
-		statusText = "Bad Request";
-		break;
-	case 415:
-		statusText = "Unsupported Media Type";
-		break;
-	default:
-		statusText = "Internal Server Error";
-		break;
-	}
 	std::string response =
-		"HTTP/1.1 " + std::to_string(code) + " " + statusText + "\r\n"
-																"Content-Type: text/plain\r\n"
-																"Content-Length: " +
-		std::to_string(message.size()) + "\r\n"
-										 "Connection: close\r\n\r\n" +
+		"HTTP/1.1 201 Created\r\n"
+		"Content-Type: text/plain\r\n"
+		"Content-Length: " + std::to_string(message.size()) + "\r\n"
+		"Connection: close\r\n\r\n" +
 		message;
+
 	manager_.writeResponseData(response);
+	manager_.onRequestDone();
+	done_ = true;
 }

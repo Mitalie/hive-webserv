@@ -29,5 +29,5 @@ private:
 	std::string targetPath_;
 	std::string boundary_;
 	std::string multipartBuffer_;
-	void sendResponse(int code, const std::string &message);
+	void uploadComplete(const std::string &message);
 };
