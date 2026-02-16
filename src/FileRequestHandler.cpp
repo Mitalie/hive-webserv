@@ -84,25 +84,8 @@ void FileRequestHandler::sendData()
 		ssize_t result = read(fd_, readBuffer, CHUNK_SIZE);
 		if (result <= 0)
 		{
-			if (result < 0)
-			{
-				switch (errno)
-				{
-				case EACCES:
-					manager_.onRequestError(403);
-					break;
-				case EIO:
-					manager_.onRequestError(500);
-					break;
-				default:
-					manager_.onRequestError(502);
-					break;
-				}
-			}
-			else
-			{
-				manager_.onRequestError(502);
-			}
+			// Read error or unexpected EOF (file shrunk)
+			manager_.onRequestError(500);
 			return;
 		}
 		size_t bytesRead = result;

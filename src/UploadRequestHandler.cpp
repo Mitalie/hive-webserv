@@ -21,8 +21,6 @@ UploadRequestHandler::UploadRequestHandler(IRequestManager &manager, const Reque
 		if (!std::filesystem::create_directories(route_.uploadStore, ec))
 		{
 			manager_.onRequestError(403);
-			manager_.onRequestDone();
-			done_ = true;
 			return;
 		}
 	}
@@ -59,8 +57,6 @@ UploadRequestHandler::UploadRequestHandler(IRequestManager &manager, const Reque
 	if (contentType.find("multipart/form-data") == std::string::npos)
 	{
 		manager_.onRequestError(415);
-		manager_.onRequestDone();
-		done_ = true;
 		return;
 	}
 
@@ -69,8 +65,6 @@ UploadRequestHandler::UploadRequestHandler(IRequestManager &manager, const Reque
 	if (pos == std::string::npos)
 	{
 		manager_.onRequestError(400);
-		manager_.onRequestDone();
-		done_ = true;
 		return;
 	}
 	boundary_ = "--" + contentType.substr(pos + 9);
@@ -102,8 +96,6 @@ void UploadRequestHandler::onBodyData(std::span<const char> data)
 		if (!outFile_)
 		{
 			manager_.onRequestError(500);
-			manager_.onRequestDone();
-			done_ = true;
 			return;
 		}
 		fileOpen_ = true;
@@ -117,8 +109,6 @@ void UploadRequestHandler::onBodyData(std::span<const char> data)
 		if (!outFile_)
 		{
 			manager_.onRequestError(507);
-			manager_.onRequestDone();
-			done_ = true;
 			return;
 		}
 		// If boundary found, upload is done
@@ -147,8 +137,6 @@ void UploadRequestHandler::onBodyData(std::span<const char> data)
 					outFile_.close();
 				}
 				manager_.onRequestError(400);
-				manager_.onRequestDone();
-				done_ = true;
 				return;
 			}
 			// Write up to boundary (excluding trailing \r\n)
@@ -173,8 +161,6 @@ void UploadRequestHandler::onBodyData(std::span<const char> data)
 		if (!outFile_)
 		{
 			manager_.onRequestError(500);
-			manager_.onRequestDone();
-			done_ = true;
 			return;
 		}
 	}
@@ -195,8 +181,6 @@ void UploadRequestHandler::onBodyDone()
 
 		// 3. Send error and mark done
 		manager_.onRequestError(400);
-		manager_.onRequestDone();
-		done_ = true;
 	}
 }
 

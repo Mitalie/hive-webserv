@@ -11,11 +11,6 @@
 
 DeleteRequestHandler::DeleteRequestHandler(IRequestManager &manager, const char *filePath)
 {
-	if (std::string(filePath).length() > 1024)
-	{
-		manager.onRequestError(414);
-		return;
-	}
 	if (unlink(filePath) == 0)
 	{
 		sendResponse(manager, 200, "OK", "File deleted successfully");
@@ -25,33 +20,17 @@ DeleteRequestHandler::DeleteRequestHandler(IRequestManager &manager, const char 
 		switch (errno)
 		{
 		case ENOENT:
+		case ENOTDIR:
 			manager.onRequestError(404);
 			break;
+
 		case EACCES:
 		case EPERM:
 		case EROFS:
-			manager.onRequestError(403);
-			break;
 		case EISDIR:
-			// Specifically noted in man page: Linux returns EISDIR if pathname refers to a directory
 			manager.onRequestError(403);
 			break;
-		case ENAMETOOLONG:
-			manager.onRequestError(414);
-			break;
-		case ELOOP:
-		case ENOTDIR:
-			// Path components are invalid or circular
-			manager.onRequestError(400);
-			break;
-		case EBUSY:
-		case ETXTBSY:
-			// File is a mount point or an active executable
-			manager.onRequestError(503);
-			break;
-		case EIO:
-			manager.onRequestError(500);
-			break;
+
 		default:
 			manager.onRequestError(500);
 			break;
