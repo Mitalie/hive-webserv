@@ -2,7 +2,6 @@
 
 #include <cstddef>
 #include <map>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -19,7 +18,7 @@ void HeaderFields::parse(std::string_view data)
 		if (lineEnd == std::string_view::npos)
 		{
 			// Strict requirement: every header line must end with CRLF
-			throw std::runtime_error("malformed header: missing CRLF");
+			throw BadHeaderFields("Missing CRLF");
 		}
 
 		std::string_view line = data.substr(pos, lineEnd - pos);
@@ -28,13 +27,13 @@ void HeaderFields::parse(std::string_view data)
 		// Find colon separator
 		size_t colonPos = line.find(':');
 		if (colonPos == std::string_view::npos)
-			throw std::runtime_error("malformed header: no colon separator");
+			throw BadHeaderFields("No colon separator");
 
 		std::string key(trim(line.substr(0, colonPos)));
 		std::string value(trim(line.substr(colonPos + 1)));
 
 		if (key.empty())
-			throw std::runtime_error("malformed header: empty key");
+			throw BadHeaderFields("No field name");
 
 		// Store with lowercase key
 		headers_[toLower(key)].push_back(value);

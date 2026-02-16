@@ -1,6 +1,7 @@
 #include "CgiHandler.hpp"
 
 #include <cctype>
+#include <cerrno>
 #include <cstdlib>
 #include <cstring>
 #include <memory>
@@ -12,7 +13,6 @@
 
 #include <fcntl.h>
 #include <signal.h>
-#include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -116,13 +116,10 @@ CgiHandler::~CgiHandler()
 	// Reap zombie process if necessary
 	if (pid > 0)
 	{
-		int status;
-		pid_t res = waitpid(pid, &status, WNOHANG);
-		if (res == 0)
-		{
-			kill(pid, SIGKILL);
-			waitpid(pid, nullptr, 0);
-		}
+		// Terminate child if it didn't exit yet, does nothing if it did
+		kill(pid, SIGKILL);
+		while (waitpid(pid, nullptr, 0) < 0 && errno == EINTR)
+			; // Repeat waitpid if interrupted by signal
 	}
 }
 

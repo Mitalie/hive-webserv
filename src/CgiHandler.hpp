@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+#include <sys/types.h>
+
 #include "CallbackQueue.hpp"
 #include "Config.hpp"
 #include "ReadWriteFD.hpp"
