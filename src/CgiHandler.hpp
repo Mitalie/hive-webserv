@@ -36,6 +36,7 @@ public:
 			   std::string scriptPath,
 			   std::string pathInfo,
 			   std::string interpreterPath,
+			   std::string clientIp,
 			   ReadWriteFD::ReadableDataCallback stdoutReadCallback,
 			   ReadWriteFD::ReadableEofCallback stdoutEofCallback,
 			   ReadWriteFD::ReadableErrorCallback stdoutErrorCallback,
@@ -76,6 +77,7 @@ private:
 	std::string scriptPath;
 	std::string pathInfo;
 	std::string interpreterPath;
+	std::string clientIp;
 
 	CallbackQueue::CallbackOwner cbOwner;
 

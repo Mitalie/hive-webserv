@@ -25,6 +25,7 @@ CgiHandler::CgiHandler(RequestHeader header,
 					   std::string scriptPath,
 					   std::string pathInfo,
 					   std::string interpreterPath,
+					   std::string clientIp,
 					   ReadWriteFD::ReadableDataCallback stdoutReadCallback,
 					   ReadWriteFD::ReadableEofCallback stdoutEofCallback,
 					   ReadWriteFD::ReadableErrorCallback stdoutErrorCallback,
@@ -34,6 +35,7 @@ CgiHandler::CgiHandler(RequestHeader header,
 	  scriptPath(std::move(scriptPath)),
 	  pathInfo(std::move(pathInfo)),
 	  interpreterPath(std::move(interpreterPath)),
+	  clientIp(std::move(clientIp)),
 	  pid(-1),
 	  inputFinished(false),
 	  currentStdinQueueSize(0)
@@ -276,7 +278,7 @@ std::vector<std::string> CgiHandler::createEnvVariables(const std::string &scrip
 	env.push_back("SCRIPT_FILENAME=" + scriptName);
 	env.push_back("SCRIPT_NAME=" + scriptNameURI);
 	env.push_back("QUERY_STRING=" + queryStr);
-	env.push_back("REDIRECT_STATUS=200");
+	env.push_back("REDIRECT_STATUS=200"); // Non-standard, required for PHP-CGI
 
 	// Handle Server Name and Port
 	std::string host = header.get("host");
@@ -302,7 +304,7 @@ std::vector<std::string> CgiHandler::createEnvVariables(const std::string &scrip
 		env.push_back("SERVER_NAME=localhost");
 		env.push_back("SERVER_PORT=8080");
 	}
-	env.push_back("REMOTE_ADDR=127.0.0.1");
+	env.push_back("REMOTE_ADDR=" + clientIp);
 
 	for (const auto &pair : header.all())
 	{

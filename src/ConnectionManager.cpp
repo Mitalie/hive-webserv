@@ -1,6 +1,7 @@
 #include "ConnectionManager.hpp"
 
 #include <utility>
+#include <string>
 
 #include "ClientHandler.hpp"
 #include "Config.hpp"
@@ -10,14 +11,14 @@ ConnectionManager::ConnectionManager(const HostPort &hostPort, const ListenerCon
 	: config(config),
 	  listener(
 		  hostPort,
-		  [this](UnixFD &&connFd)
-		  { onAccept(std::move(connFd)); })
+		  [this](UnixFD &&connFd, std::string &&clientIp)
+		  { onAccept(std::move(connFd), std::move(clientIp)); })
 {
 }
 
-void ConnectionManager::onAccept(UnixFD &&connFd)
+void ConnectionManager::onAccept(UnixFD &&connFd, std::string &&clientIp)
 {
-	connections.emplace(config, *this, std::move(connFd));
+	connections.emplace(config, *this, std::move(connFd), std::move(clientIp));
 }
 
 void ConnectionManager::destroyConnection(ClientHandler &connection)

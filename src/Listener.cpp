@@ -5,9 +5,11 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <sstream>
 
 #include <netdb.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
 
 #include "Config.hpp"
 
@@ -30,7 +32,7 @@ Listener::Listener(const HostPort &hostport, AcceptCallback &&onAccept)
 	// Any errors here are considered fatal.
 	addrinfo gaiHint{
 		.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV | AI_ADDRCONFIG | AI_PASSIVE,
-		.ai_family = AF_UNSPEC,
+		.ai_family = AF_INET, // AF_INET instead of AF_UNSPEC, because we only implement IPv4-to-string
 		.ai_socktype = SOCK_STREAM,
 		.ai_protocol = 0,
 		.ai_addrlen = 0,
@@ -77,10 +79,20 @@ Listener::~Listener()
 
 void Listener::onReadable()
 {
-	int connFd = accept(fd, nullptr, nullptr);
+	struct sockaddr_in addr;
+	socklen_t addrLen = sizeof(addr);
+
+	int connFd = accept(fd, (struct sockaddr *)&addr, &addrLen);
+
 	// Assume that any errors from accept are transient and/or remove the failed
 	// connection from the queue. Just wait for another onReadable callback.
 	if (connFd < 0)
 		return;
-	onAccept(UnixFD(connFd));
+
+	// Manual IP to String conversion (IPv4)
+	std::stringstream ss;
+	unsigned char *p = (unsigned char *)&addr.sin_addr.s_addr;
+	ss << (int)p[0] << "." << (int)p[1] << "." << (int)p[2] << "." << (int)p[3];
+
+	onAccept(UnixFD(connFd), ss.str());
 }

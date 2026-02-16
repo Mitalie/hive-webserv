@@ -1,6 +1,7 @@
 #pragma once
 
 #include <set>
+#include <string>
 
 #include "Config.hpp"
 #include "DelayedCleanup.hpp"
@@ -21,7 +22,7 @@ private:
 	Listener listener;
 	std::set<ClientHandler, OrderByAddr<ClientHandler>> connections;
 
-	void onAccept(UnixFD &&connFd);
+	void onAccept(UnixFD &&connFd, std::string &&clientIp);
 
 	class DestroyConnectionException : public DelayedCleanupBase
 	{

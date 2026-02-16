@@ -60,9 +60,11 @@ static const ServerConfig &findServerConfig(const RequestHeader &header, const L
 ClientHandler::ClientHandler(
 	const ListenerConfig &config,
 	ConnectionManager &manager,
-	UnixFD &&fd)
+	UnixFD &&fd,
+	std::string &&clientIp)
 	: config(config),
 	  manager(manager),
+	  clientIp(std::move(clientIp)),
 	  socket(
 		  std::move(fd),
 		  [this](std::span<const char> newData)
@@ -105,6 +107,11 @@ void ClientHandler::onRequestDone()
 void ClientHandler::onRequestError(int errorStatus)
 {
 	throw TerminateRequestException(*this, errorStatus);
+}
+
+const std::string &ClientHandler::getClientIp() const
+{
+	return clientIp;
 }
 
 void ClientHandler::destroyConnection()

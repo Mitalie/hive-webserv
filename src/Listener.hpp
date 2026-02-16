@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <string>
 
 #include "Config.hpp"
 #include "UnixFD.hpp"
@@ -14,7 +15,7 @@
 class Listener
 {
 public:
-	using AcceptCallback = std::function<void(UnixFD &&connFd)>;
+	using AcceptCallback = std::function<void(UnixFD &&connFd, std::string &&clientIp)>;
 
 	Listener(const HostPort &hostport, AcceptCallback &&onAccept);
 	Listener(const Listener &other) = delete;
