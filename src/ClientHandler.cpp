@@ -61,10 +61,12 @@ ClientHandler::ClientHandler(
 	const ListenerConfig &config,
 	ConnectionManager &manager,
 	UnixFD &&fd,
-	std::string &&clientIp)
+	std::string &&clientIp,
+	const HostPort &hostPort)
 	: config(config),
 	  manager(manager),
 	  clientIp(std::move(clientIp)),
+	  hostPort(hostPort),
 	  socket(
 		  std::move(fd),
 		  [this](std::span<const char> newData)
@@ -112,6 +114,11 @@ void ClientHandler::onRequestError(int errorStatus)
 const std::string &ClientHandler::getClientIp() const
 {
 	return clientIp;
+}
+
+const HostPort &ClientHandler::getHostPort() const
+{
+	return hostPort;
 }
 
 void ClientHandler::destroyConnection()

@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "CallbackQueue.hpp"
+#include "Config.hpp"
 #include "ReadWriteFD.hpp"
 #include "RequestHeader.hpp"
 
@@ -37,6 +38,7 @@ public:
 			   std::string pathInfo,
 			   std::string interpreterPath,
 			   std::string clientIp,
+			   const HostPort &hostPort,
 			   ReadWriteFD::ReadableDataCallback stdoutReadCallback,
 			   ReadWriteFD::ReadableEofCallback stdoutEofCallback,
 			   ReadWriteFD::ReadableErrorCallback stdoutErrorCallback,
@@ -78,6 +80,7 @@ private:
 	std::string pathInfo;
 	std::string interpreterPath;
 	std::string clientIp;
+	const HostPort &hostPort;
 
 	CallbackQueue::CallbackOwner cbOwner;
 

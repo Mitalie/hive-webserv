@@ -36,7 +36,8 @@ public:
 		const ListenerConfig &config,
 		ConnectionManager &manager,
 		UnixFD &&fd,
-		std::string &&clientIp);
+		std::string &&clientIp,
+		const HostPort &hostPort);
 	ClientHandler(const ClientHandler &other) = delete;
 	ClientHandler &operator=(const ClientHandler &other) = delete;
 	~ClientHandler();
@@ -48,11 +49,13 @@ public:
 	virtual void onRequestDone() override;
 	virtual void onRequestError(int errorStatus) override;
 	virtual const std::string &getClientIp() const override;
+	virtual const HostPort &getHostPort() const override;
 
 private:
 	const ListenerConfig &config;
 	ConnectionManager &manager;
 	std::string clientIp;
+	const HostPort &hostPort;
 	CallbackQueue::CallbackOwner cbOwner;
 	TimeoutOwner activityTimer;
 	void destroyConnection();

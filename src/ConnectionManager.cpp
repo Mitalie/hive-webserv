@@ -8,7 +8,8 @@
 #include "UnixFD.hpp"
 
 ConnectionManager::ConnectionManager(const HostPort &hostPort, const ListenerConfig &config)
-	: config(config),
+	: hostPort(hostPort),
+	  config(config),
 	  listener(
 		  hostPort,
 		  [this](UnixFD &&connFd, std::string &&clientIp)
@@ -18,7 +19,7 @@ ConnectionManager::ConnectionManager(const HostPort &hostPort, const ListenerCon
 
 void ConnectionManager::onAccept(UnixFD &&connFd, std::string &&clientIp)
 {
-	connections.emplace(config, *this, std::move(connFd), std::move(clientIp));
+	connections.emplace(config, *this, std::move(connFd), std::move(clientIp), hostPort);
 }
 
 void ConnectionManager::destroyConnection(ClientHandler &connection)

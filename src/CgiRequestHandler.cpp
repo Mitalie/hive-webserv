@@ -57,6 +57,7 @@ void CgiRequestHandler::launchCgiProcess()
 			pathInfo_,
 			interpreter_,
 			manager_.getClientIp(),
+			manager_.getHostPort(),
 			[this](std::span<const char> data)
 			{
 				handleCgiOutput(data);

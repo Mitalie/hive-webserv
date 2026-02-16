@@ -18,6 +18,7 @@ public:
 	void destroyConnection(ClientHandler &connection);
 
 private:
+	const HostPort &hostPort;
 	const ListenerConfig &config;
 	Listener listener;
 	std::set<ClientHandler, OrderByAddr<ClientHandler>> connections;

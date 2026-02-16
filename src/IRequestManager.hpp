@@ -2,6 +2,7 @@
 
 #include <span>
 #include <string>
+#include "Config.hpp"
 
 /*
 	Abstract interface implemented by the request manager that allows a request
@@ -46,6 +47,7 @@ public:
 	*/
 	virtual void onRequestError(int errorStatus = 500) = 0;
 
-	// Accessor for the client's IP address
+	// Accessor for the client's IP address and port
 	virtual const std::string &getClientIp() const = 0;
+	virtual const HostPort &getHostPort() const = 0;
 };

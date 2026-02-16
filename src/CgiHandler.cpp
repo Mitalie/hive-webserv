@@ -26,6 +26,7 @@ CgiHandler::CgiHandler(RequestHeader header,
 					   std::string pathInfo,
 					   std::string interpreterPath,
 					   std::string clientIp,
+					   const HostPort &hostPort,
 					   ReadWriteFD::ReadableDataCallback stdoutReadCallback,
 					   ReadWriteFD::ReadableEofCallback stdoutEofCallback,
 					   ReadWriteFD::ReadableErrorCallback stdoutErrorCallback,
@@ -36,6 +37,7 @@ CgiHandler::CgiHandler(RequestHeader header,
 	  pathInfo(std::move(pathInfo)),
 	  interpreterPath(std::move(interpreterPath)),
 	  clientIp(std::move(clientIp)),
+	  hostPort(hostPort),
 	  pid(-1),
 	  inputFinished(false),
 	  currentStdinQueueSize(0)
@@ -289,21 +291,13 @@ std::vector<std::string> CgiHandler::createEnvVariables(const std::string &scrip
 	{
 		size_t colon = host.find(':');
 		if (colon != std::string::npos)
-		{
 			env.push_back("SERVER_NAME=" + host.substr(0, colon));
-			env.push_back("SERVER_PORT=" + host.substr(colon + 1));
-		}
 		else
-		{
 			env.push_back("SERVER_NAME=" + host);
-			env.push_back("SERVER_PORT=80");
-		}
 	}
 	else
-	{
-		env.push_back("SERVER_NAME=localhost");
-		env.push_back("SERVER_PORT=8080");
-	}
+		env.push_back("SERVER_NAME=" + hostPort.host);
+	env.push_back("SERVER_PORT=" + hostPort.port);
 	env.push_back("REMOTE_ADDR=" + clientIp);
 
 	for (const auto &pair : header.all())
