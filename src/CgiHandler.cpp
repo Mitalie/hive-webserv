@@ -256,7 +256,7 @@ std::vector<std::string> CgiHandler::createEnvVariables(const std::string &scrip
 {
 	std::vector<std::string> env;
 
-	constexpr size_t fixedVarsCount = 10;
+	constexpr size_t fixedVarsCount = 11; // Avoid vector relocations
 	env.reserve(header.all().size() + fixedVarsCount);
 
 	std::string queryStr = "";
