@@ -23,7 +23,10 @@
 
 CgiHandler::CgiHandler(RequestHeader header,
 					   std::string scriptPath,
+					   std::string pathInfo,
 					   std::string interpreterPath,
+					   std::string clientIp,
+					   const HostPort &hostPort,
 					   ReadWriteFD::ReadableDataCallback stdoutReadCallback,
 					   ReadWriteFD::ReadableEofCallback stdoutEofCallback,
 					   ReadWriteFD::ReadableErrorCallback stdoutErrorCallback,
@@ -31,7 +34,10 @@ CgiHandler::CgiHandler(RequestHeader header,
 					   ReadWriteFD::WritableErrorCallback stdinErrorCallback)
 	: header(std::move(header)),
 	  scriptPath(std::move(scriptPath)),
+	  pathInfo(std::move(pathInfo)),
 	  interpreterPath(std::move(interpreterPath)),
+	  clientIp(std::move(clientIp)),
+	  hostPort(hostPort),
 	  pid(-1),
 	  inputFinished(false),
 	  currentStdinQueueSize(0)
@@ -130,14 +136,16 @@ void CgiHandler::onStdinDrain(size_t bufferSize, ReadWriteFD::WritableDrainCallb
 		originalCallback(bufferSize);
 
 	// 2. Check if we need to close the pipe
-	// We use queueCallback to ensure we don't destroy the ReadWriteFD 
+	// We use queueCallback to ensure we don't destroy the ReadWriteFD
 	// while we are currently inside its callback stack.
 	if (this->inputFinished && bufferSize == 0)
 	{
-		cbOwner.queueCallback([this]() {
-			if (this->stdinStream)
-				this->stdinStream.reset();
-		});
+		cbOwner.queueCallback(
+			[this]()
+			{
+				if (this->stdinStream)
+					this->stdinStream.reset();
+			});
 	}
 }
 
@@ -216,18 +224,17 @@ void CgiHandler::setupChild()
 	// 3. Safety: Close all other server sockets inherited from parent
 	Poll::closeAllRegisteredFds();
 
-	// 4. Separate Query String from Script Path
-	std::string cleanScriptPath = scriptPath;
-	std::string queryString = "";
-	size_t qPos = scriptPath.find('?');
-	if (qPos != std::string::npos)
+	// 4. Change Directory
+	size_t lastSlash = scriptPath.find_last_of('/');
+	if (lastSlash != std::string::npos)
 	{
-		cleanScriptPath = scriptPath.substr(0, qPos);
-		queryString = scriptPath.substr(qPos + 1);
+		std::string scriptDir = scriptPath.substr(0, lastSlash);
+		if (chdir(scriptDir.c_str()) < 0)
+			exit(1);
 	}
 
 	// 5. Prepare Environment and Args
-	std::vector<std::string> envStrs = createEnvVariables(cleanScriptPath, queryString);
+	std::vector<std::string> envStrs = createEnvVariables(scriptPath);
 
 	std::vector<char *> envp;
 	envp.reserve(envStrs.size() + 1);
@@ -238,26 +245,60 @@ void CgiHandler::setupChild()
 
 	char *args[] = {
 		interpreterPath.data(),
-		cleanScriptPath.data(),
+		scriptPath.data(),
 		nullptr};
 
 	execve(args[0], args, envp.data());
 	exit(1);
 }
 
-std::vector<std::string> CgiHandler::createEnvVariables(const std::string &scriptName, const std::string &queryStr)
+std::vector<std::string> CgiHandler::createEnvVariables(const std::string &scriptName)
 {
 	std::vector<std::string> env;
 
-	constexpr size_t fixedVarsCount = 6;
+	constexpr size_t fixedVarsCount = 11; // Avoid vector relocations
 	env.reserve(header.all().size() + fixedVarsCount);
+
+	std::string queryStr = "";
+	std::string scriptNameURI = header.path(); // Start with full path
+	size_t qPos = header.path().find('?');
+
+	if (qPos != std::string::npos)
+	{
+		queryStr = header.path().substr(qPos + 1);
+		scriptNameURI = header.path().substr(0, qPos);
+	}
+
+	// Adjust SCRIPT_NAME by removing PATH_INFO if present
+	if (!pathInfo.empty() && scriptNameURI.size() >= pathInfo.size())
+		scriptNameURI = scriptNameURI.substr(0, scriptNameURI.size() - pathInfo.size());
 
 	env.push_back("REQUEST_METHOD=" + header.method());
 	env.push_back("SERVER_PROTOCOL=HTTP/1.1");
-	env.push_back("PATH_INFO=" + header.path());
+	env.push_back("GATEWAY_INTERFACE=CGI/1.1"); // Mandatory for CGI
+	env.push_back("PATH_INFO=" + pathInfo);		// Use member variable
 	env.push_back("SCRIPT_FILENAME=" + scriptName);
+	env.push_back("SCRIPT_NAME=" + scriptNameURI);
 	env.push_back("QUERY_STRING=" + queryStr);
-	env.push_back("REDIRECT_STATUS=200");
+	env.push_back("REDIRECT_STATUS=200"); // Non-standard, required for PHP-CGI
+
+	// Handle Server Name and Port
+	std::string host = header.get("host");
+	if (host.empty())
+		host = header.get("Host"); // Try capitalized just in case
+
+	if (!host.empty())
+	{
+		size_t colon = host.find(':');
+		if (colon != std::string::npos)
+			env.push_back("SERVER_NAME=" + host.substr(0, colon));
+		else
+			env.push_back("SERVER_NAME=" + host);
+	}
+	else
+		env.push_back("SERVER_NAME=" + hostPort.host);
+	env.push_back("SERVER_PORT=" + hostPort.port);
+	env.push_back("REMOTE_ADDR=" + clientIp);
 
 	for (const auto &pair : header.all())
 	{

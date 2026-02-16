@@ -176,7 +176,7 @@ std::unique_ptr<IRequestHandler> handleRequestOnPath(
 	// Check for CGI match (after directory logic, so index.php is caught)
 	if (hasCgiExtension(path, route.cgiInterpreters))
 	{
-		return std::make_unique<CgiRequestHandler>(manager, header, route, path.string()); // Forbidden
+		return std::make_unique<CgiRequestHandler>(manager, header, route, path.string(), "");
 	}
 
 	// 7. Final File Checks
@@ -233,9 +233,17 @@ std::unique_ptr<IRequestHandler> handleRequestForRoute(
 			if (std::filesystem::exists(current) && std::filesystem::is_directory(current))
 				continue;
 
-			// Otherwise (File exists, or File doesn't exist), treat as CGI script
-			// TODO: pass remaining segments to CGI script as PATH_INFO
-			return std::make_unique<CgiRequestHandler>(manager, header, route, current.string());
+			// Extract PATH_INFO from remaining segments
+			std::string pathInfo;
+			std::string remainder;
+			while (std::getline(ss, remainder, '/'))
+			{
+				if (!remainder.empty())
+					pathInfo += "/" + remainder;
+			}
+
+			// Pass pathInfo to constructor
+			return std::make_unique<CgiRequestHandler>(manager, header, route, current.string(), pathInfo);
 		}
 		if (!std::getline(ss, segment, '/'))
 			break;

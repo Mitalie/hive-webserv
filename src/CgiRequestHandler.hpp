@@ -22,7 +22,7 @@
 class CgiRequestHandler : public IRequestHandler
 {
 public:
-	CgiRequestHandler(IRequestManager &manager, const RequestHeader &header, const RouteConfig &route, const std::string &scriptPath);
+	CgiRequestHandler(IRequestManager &manager, const RequestHeader &header, const RouteConfig &route, const std::string &scriptPath, const std::string &pathInfo);
 	~CgiRequestHandler();
 
 	void onBodyData(std::span<const char> data) override;
@@ -49,6 +49,7 @@ private:
 	// Stored for deferred CGI launch (chunked request body case)
 	RequestHeader storedHeader_;
 	std::string scriptPath_;
+	std::string pathInfo_;
 	std::string interpreter_;
 
 	// Request body buffering (for chunked transfer from client)

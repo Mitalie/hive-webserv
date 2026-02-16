@@ -19,10 +19,11 @@
 #include "ReadWriteFD.hpp"
 #include "RequestHeader.hpp"
 
-CgiRequestHandler::CgiRequestHandler(IRequestManager &manager, const RequestHeader &header, const RouteConfig &route, const std::string &scriptPath)
+CgiRequestHandler::CgiRequestHandler(IRequestManager &manager, const RequestHeader &header, const RouteConfig &route, const std::string &scriptPath, const std::string &pathInfo)
 	: manager_(manager),
 	  storedHeader_(header),
-	  scriptPath_(scriptPath)
+	  scriptPath_(std::filesystem::absolute(scriptPath).string()),
+	  pathInfo_(pathInfo)
 {
 	// Determine script path and interpreter
 	interpreter_ = findInterpreter(scriptPath_, route);
@@ -53,7 +54,10 @@ void CgiRequestHandler::launchCgiProcess()
 		cgiHandler_ = std::make_unique<CgiHandler>(
 			storedHeader_,
 			scriptPath_,
+			pathInfo_,
 			interpreter_,
+			manager_.getClientIp(),
+			manager_.getHostPort(),
 			[this](std::span<const char> data)
 			{
 				handleCgiOutput(data);
@@ -237,6 +241,9 @@ std::string CgiRequestHandler::findInterpreter(const std::string &scriptPath, co
 	auto it = route.cgiInterpreters.find(extension);
 	if (it != route.cgiInterpreters.end())
 	{
+		std::filesystem::path interpreterPath(it->second);
+		if (interpreterPath.is_relative())
+			return std::filesystem::absolute(interpreterPath).string();
 		return it->second;
 	}
 

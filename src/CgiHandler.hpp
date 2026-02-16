@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "CallbackQueue.hpp"
+#include "Config.hpp"
 #include "ReadWriteFD.hpp"
 #include "RequestHeader.hpp"
 
@@ -34,7 +35,10 @@ public:
 	*/
 	CgiHandler(RequestHeader header,
 			   std::string scriptPath,
+			   std::string pathInfo,
 			   std::string interpreterPath,
+			   std::string clientIp,
+			   const HostPort &hostPort,
 			   ReadWriteFD::ReadableDataCallback stdoutReadCallback,
 			   ReadWriteFD::ReadableEofCallback stdoutEofCallback,
 			   ReadWriteFD::ReadableErrorCallback stdoutErrorCallback,
@@ -69,11 +73,14 @@ private:
 	void onStdinDrain(size_t bufferSize, ReadWriteFD::WritableDrainCallback originalCallback);
 
 	// Helper to translate HTTP headers into CGI environment format
-	std::vector<std::string> createEnvVariables(const std::string &scriptName, const std::string &queryStr);
+	std::vector<std::string> createEnvVariables(const std::string &scriptName);
 
 	RequestHeader header;
 	std::string scriptPath;
+	std::string pathInfo;
 	std::string interpreterPath;
+	std::string clientIp;
+	const HostPort &hostPort;
 
 	CallbackQueue::CallbackOwner cbOwner;
 

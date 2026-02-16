@@ -4,6 +4,7 @@
 #include <memory>
 #include <span>
 #include <vector>
+#include <string>
 
 #include "CallbackQueue.hpp"
 #include "ChunkHeaderReader.hpp"
@@ -28,16 +29,18 @@ class Poll;
 
 	Implements IRequestManager for use by the request handlers.
 */
-class ClientHandler : public IRequestManager
+class ClientHandler final : public IRequestManager
 {
 public:
 	ClientHandler(
 		const ListenerConfig &config,
 		ConnectionManager &manager,
-		UnixFD &&fd);
+		UnixFD &&fd,
+		std::string &&clientIp,
+		const HostPort &hostPort);
 	ClientHandler(const ClientHandler &other) = delete;
 	ClientHandler &operator=(const ClientHandler &other) = delete;
-	virtual ~ClientHandler();
+	~ClientHandler();
 
 	/* IRequestManager functions */
 
@@ -45,10 +48,14 @@ public:
 	virtual size_t writeResponseData(std::span<const char> data) override;
 	virtual void onRequestDone() override;
 	virtual void onRequestError(int errorStatus) override;
+	virtual const std::string &getClientIp() const override;
+	virtual const HostPort &getHostPort() const override;
 
 private:
 	const ListenerConfig &config;
 	ConnectionManager &manager;
+	std::string clientIp;
+	const HostPort &hostPort;
 	CallbackQueue::CallbackOwner cbOwner;
 	TimeoutOwner activityTimer;
 	void destroyConnection();
