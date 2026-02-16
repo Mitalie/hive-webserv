@@ -5,47 +5,81 @@
 #include <iostream>
 #include <span>
 #include <string>
-#include <system_error>
+#include <string_view>
 
 #include "Config.hpp"
 #include "IRequestManager.hpp"
 #include "RequestHeader.hpp"
 
+/*
+	Restrict to characters that should be unproblematic for both URLs and for a
+	server admin using a shell.
+*/
+static std::string sanitizeFilename(std::string filename)
+{
+	for (char &c : filename)
+	{
+		if (c >= 'a' && c <= 'z')
+			continue;
+		if (c >= 'A' && c <= 'Z')
+			continue;
+		if (c >= '0' && c <= '9')
+			continue;
+		switch (c)
+		{
+			case '(':
+			case ')':
+			case '+':
+			case ',':
+			case '-':
+			case '.':
+			case '=':
+			case '_':
+				continue;
+		}
+		c = '_';
+	}
+	return filename;
+}
+
 UploadRequestHandler::UploadRequestHandler(IRequestManager &manager, const RequestHeader &header, const RouteConfig &route)
 	: manager_(manager), header_(header), route_(route), done_(false), fileOpen_(false)
 {
-	// 1. Ensure upload directory exists
-	std::error_code ec;
-	if (!std::filesystem::exists(route_.uploadStore, ec))
+	// Extract path relative to route root
+	std::string_view filename = std::string_view(header.path()).substr(route.root.length());
+	size_t skipSlashes = filename.find_first_not_of('/');
+	if (skipSlashes != filename.npos)
+		filename.remove_prefix(skipSlashes);
+
+	// Only allow plain filename, no directory traversal
+	if (filename == "." || filename == ".." || filename.find('/') != filename.npos)
 	{
-		if (!std::filesystem::create_directories(route_.uploadStore, ec))
-		{
-			manager_.onRequestError(403);
-			return;
-		}
+		manager.onRequestError(403);
+		return;
 	}
 
-	// 2. Sanitize filename (no directory traversal, no empty, no special chars)
-	std::string filename = std::filesystem::path(header_.path()).filename().string();
-	if (filename.empty() || filename == "." || filename == "..")
-		filename = "upload.bin";
-	// Remove dangerous characters (very basic)
-	for (char &c : filename)
+	// Ensure upload store exists
+	if (!std::filesystem::exists(route.uploadStore))
 	{
-		if (c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|')
-			c = '_';
+		manager_.onRequestError(500);
+		return;
 	}
 
-	// 3. Unique filename logic (document.txt, document(1).txt, ...)
-	std::string base = filename;
-	std::string ext;
-	size_t dot = filename.find_last_of('.');
-	if (dot != std::string::npos && dot != 0)
+	// Split and sanitize the filename
+	size_t lastPeriod = filename.find_last_of('.');
+	if (lastPeriod == std::string::npos || lastPeriod == 0)
+		lastPeriod = filename.length();
+	std::string base = sanitizeFilename(std::string(filename.substr(0, lastPeriod)));
+	std::string ext = sanitizeFilename(std::string(filename.substr(lastPeriod)));
+	if (base.empty())
 	{
-		base = filename.substr(0, dot);
-		ext = filename.substr(dot);
+		// Use a default name if uploading directly to the upload route
+		base = "upload";
+		ext = ".bin";
 	}
-	targetPath_ = route_.uploadStore + "/" + filename;
+
+	// Unique filename logic (document.txt, document(1).txt, ...)
+	targetPath_ = route_.uploadStore + "/" + base + ext;
 	int count = 1;
 	while (std::filesystem::exists(targetPath_))
 	{
