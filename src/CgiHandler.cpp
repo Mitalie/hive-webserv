@@ -57,9 +57,11 @@ CgiHandler::CgiHandler(RequestHeader header,
 		throw std::runtime_error("CgiHandler: pipe creation failed");
 	}
 
-	// 2. Set Non-Blocking on Parent Ends
+	// 2. Set Non-Blocking and close-on-exec on Parent Ends
 	if (fcntl(pipeIn[1], F_SETFL, O_NONBLOCK) < 0 ||
-		fcntl(pipeOut[0], F_SETFL, O_NONBLOCK) < 0)
+		fcntl(pipeIn[1], F_SETFD, FD_CLOEXEC) < 0 ||
+		fcntl(pipeOut[0], F_SETFL, O_NONBLOCK) < 0 ||
+		fcntl(pipeOut[0], F_SETFD, FD_CLOEXEC) < 0)
 	{
 		cleanupPipes();
 		throw std::runtime_error("CgiHandler: fcntl failed");
@@ -209,22 +211,19 @@ void CgiHandler::cleanupPipes()
 
 void CgiHandler::setupChild()
 {
-	// 1. Redirect Standard IO
+	// Redirect Standard IO
 	if (dup2(pipeIn[0], STDIN_FILENO) < 0)
 		exit(1);
 	if (dup2(pipeOut[1], STDOUT_FILENO) < 0)
 		exit(1);
 
-	// 2. Close pipe ends
+	// Get rid of pipe FDs
 	close(pipeIn[1]);
 	close(pipeOut[0]);
 	close(pipeIn[0]);
 	close(pipeOut[1]);
 
-	// 3. Safety: Close all other server sockets inherited from parent
-	Poll::closeAllRegisteredFds();
-
-	// 4. Change Directory
+	// Change Directory
 	size_t lastSlash = scriptPath.find_last_of('/');
 	if (lastSlash != std::string::npos)
 	{
@@ -233,7 +232,7 @@ void CgiHandler::setupChild()
 			exit(1);
 	}
 
-	// 5. Prepare Environment and Args
+	// Prepare Environment and Args
 	std::vector<std::string> envStrs = createEnvVariables(scriptPath);
 
 	std::vector<char *> envp;

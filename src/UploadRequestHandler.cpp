@@ -101,13 +101,13 @@ UploadRequestHandler::UploadRequestHandler(IRequestManager &manager, const Reque
 	// Unique filename logic (document.txt, document(1).txt, ...)
 	targetFilename_ = base + ext;
 	targetPath_ = route_.uploadStore + "/" + targetFilename_;
-	int fd = ::open(targetPath_.c_str(), O_CREAT | O_EXCL | O_WRONLY, 0644);
+	int fd = ::open(targetPath_.c_str(), O_CREAT | O_EXCL | O_WRONLY | O_CLOEXEC, 0644);
 	int count = 1;
 	while (fd < 0 && errno == EEXIST)
 	{
 		targetFilename_ = base + "(" + std::to_string(count++) + ")" + ext;
 		targetPath_ = route_.uploadStore + "/" + targetFilename_;
-		fd = ::open(targetPath_.c_str(), O_CREAT | O_EXCL | O_WRONLY, 0644);
+		fd = ::open(targetPath_.c_str(), O_CREAT | O_EXCL | O_WRONLY | O_CLOEXEC, 0644);
 	}
 	if (fd < 0)
 	{

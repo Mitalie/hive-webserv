@@ -6,7 +6,6 @@
 #include <stdexcept>
 
 #include <sys/poll.h>
-#include <unistd.h>
 
 #include "DelayedCleanup.hpp"
 
@@ -119,15 +118,6 @@ void Poll::FDs::removeFd(int fd)
 {
 	instance.fdMap.erase(fd);
 	// epoll: unregister fd
-}
-
-void Poll::closeAllRegisteredFds()
-{
-	for (const auto &entry : instance.fdMap)
-	{
-		int fd = entry.first;
-		close(fd);
-	}
 }
 
 void Poll::FDs::setReadableInterest(int fd, bool interest)

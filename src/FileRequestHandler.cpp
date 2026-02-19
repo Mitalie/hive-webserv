@@ -38,7 +38,7 @@ void FileRequestHandler::notifyResponseBuffer(size_t bufferSize)
 
 void FileRequestHandler::start(const char *filePath)
 {
-	fd_ = UnixFD(open(filePath, O_RDONLY));
+	fd_ = UnixFD(open(filePath, O_RDONLY | O_CLOEXEC));
 	if (fd_ == -1)
 	{
 		switch (errno)
