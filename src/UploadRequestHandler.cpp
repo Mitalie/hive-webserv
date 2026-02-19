@@ -50,10 +50,9 @@ UploadRequestHandler::UploadRequestHandler(IRequestManager &manager, const Reque
 	: manager_(manager), header_(header), route_(route), done_(false), fileDataStarted_(false)
 {
 	// Extract path relative to route root
-	std::string_view filename = std::string_view(header.path()).substr(route.root.length());
-	size_t skipSlashes = filename.find_first_not_of('/');
-	if (skipSlashes != filename.npos)
-		filename.remove_prefix(skipSlashes);
+	std::string_view filename = std::string_view(header.path()).substr(route.path.length());
+	while (filename.size() && filename.front() == '/')
+		filename.remove_prefix(1);
 
 	// Only allow plain filename, no directory traversal
 	if (filename == "." || filename == ".." || filename.find('/') != filename.npos)
@@ -212,6 +211,8 @@ void UploadRequestHandler::notifyResponseBuffer(size_t /*bufferSize*/)
 
 void UploadRequestHandler::uploadComplete()
 {
+	done_ = true;
+
 	std::string message = "File uploaded successfully";
 	std::string response =
 		"HTTP/1.1 201 Created\r\n"
@@ -222,5 +223,4 @@ void UploadRequestHandler::uploadComplete()
 
 	manager_.writeResponseData(response);
 	manager_.onRequestDone();
-	done_ = true;
 }
