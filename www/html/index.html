@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Webserv Evaluation Dashboard</title>
+	<style>
+		body
+		{
+			font-family: sans-serif;
+			line-height: 1.6;
+			color: #333;
+			max-width: 800px;
+			margin: 0 auto;
+			padding: 20px;
+			background: #f4f4f9;
+		}
+
+		h1
+		{
+			color: #2c3e50;
+			border-bottom: 2px solid #2c3e50;
+			padding-bottom: 10px;
+		}
+
+		.case
+		{
+			background: white;
+			padding: 15px;
+			margin-bottom: 20px;
+			border-radius: 8px;
+			box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+		}
+
+		.case h2
+		{
+			margin-top: 0;
+			font-size: 1.2rem;
+			color: #2980b9;
+		}
+
+		.desc
+		{
+			font-size: 0.9rem;
+			margin-bottom: 10px;
+			color: #666;
+		}
+
+		.btn
+		{
+			display: inline-block;
+			background: #2980b9;
+			color: white;
+			padding: 8px 15px;
+			text-decoration: none;
+			border-radius: 4px;
+			font-weight: bold;
+			border: none;
+			cursor: pointer;
+		}
+
+		.btn:hover
+		{
+			background: #3498db;
+		}
+
+		code
+		{
+			background: #eee;
+			padding: 5px;
+			border-radius: 3px;
+			display: block;
+			margin: 10px 0;
+			word-break: break-all;
+			white-space: pre-wrap;
+			font-size: 0.85rem;
+		}
+
+		.status-box
+		{
+			border-left: 4px solid #27ae60;
+			padding-left: 10px;
+			font-style: italic;
+		}
+	</style>
+</head>
+
+<body>
+
+	<h1>Webserv Evaluation Hub</h1>
+
+	<h3>1. Routing & Static Content</h3>
+
+	<div class="case">
+		<h2>1.1 Default Route & File</h2>
+		<p class="desc">Requirement: "Routes to different directories" and "Default file to serve".</p>
+		<div class="status-box">
+			Success: You are currently viewing the default <code>index.html</code> for the root <code>/</code> route.
+		</div>
+	</div>
+
+	<div class="case">
+		<h2>1.2 Directory Listing (Autoindex)</h2>
+		<p class="desc">Requirement: "Try to list a directory."</p>
+		<a href="/images/" class="btn">Autoindex /images/</a>
+	</div>
+
+	<div class="case">
+		<h2>1.3 Redirected URL (301)</h2>
+		<p class="desc">Requirement: "Try a redirected URL."</p>
+		<a href="/redirect/" class="btn">Trigger Redirect</a>
+	</div>
+
+	<div class="case">
+		<h2>1.4 Default Error Page (404)</h2>
+		<p class="desc">Requirement: "Set up a default error page (try modifying the 404 error page)."</p>
+		<a href="/trigger-404-error" class="btn">View Custom 404 Page</a>
+	</div>
+
+	<h3>2. File Management</h3>
+
+	<div class="case">
+		<h2>2.1 Upload Files</h2>
+		<p class="desc">Requirement: "Upload some files to the server and retrieve them."</p>
+		<form action="/upload/" method="POST" enctype="multipart/form-data">
+			<input type="file" name="f">
+			<button type="submit" class="btn" style="background:#27ae60">Execute Upload</button>
+		</form>
+	</div>
+
+	<div class="case">
+		<h2>2.2 Client Body Limit (HTTP 413)</h2>
+		<p class="desc">Requirement: "Limit the size of the client request body." (Limit is 1MB. Upload a larger file to trigger 413).</p>
+		<form action="/upload/" method="POST" enctype="multipart/form-data">
+			<input type="file" name="f">
+			<button type="submit" class="btn" style="background:#e74c3c">Test Limit (413 if > 1MB)</button>
+		</form>
+	</div>
+
+	<div class="case">
+		<h2>2.3 Retrieve Files</h2>
+		<p class="desc">Requirement: "Retrieve them" (Browse uploaded files via autoindex).</p>
+		<a href="/upload/" class="btn" style="background:#7f8c8d">Browse/Retrieve Uploads</a>
+	</div>
+
+	<div class="case">
+		<h2>2.4 Delete Files (DELETE Method)</h2>
+		<p class="desc">Requirement: "Demonstrate that GET, POST, and DELETE function correctly."</p>
+		<button onclick="loadFiles()" class="btn" style="background:#8e44ad; margin-bottom: 10px;">Load Uploaded Files</button>
+		<br>
+		<select id="file-select" style="padding: 5px; margin-right: 10px; min-width: 200px;">
+			<option value="">-- Select a file --</option>
+		</select>
+		<button onclick="testDelete()" class="btn" style="background:#16a085">Delete Selected File</button>
+		<p id="delete-status" style="font-weight:bold; margin-top:10px;"></p>
+	</div>
+
+	<h3>3. HTTP Methods & Access Control</h3>
+
+	<div class="case">
+		<h2>3.1 Method Not Allowed (HTTP 405)</h2>
+		<p class="desc">Requirement: "Set up a list of accepted methods for a specific route." (/images/ is GET only)</p>
+		<form action="/images/" method="POST">
+			<button type="submit" class="btn" style="background:#c0392b">POST to GET-only Route (Trigger 405)</button>
+		</form>
+	</div>
+
+	<div class="case">
+		<h2>3.2 Method Restriction (limit_except)</h2>
+		<p class="desc">Requirement: Proving logic for <code>limit_except</code> by denying POST on a specific location.</p>
+		<button onclick="testLimitExcept()" class="btn" style="background:#c0392b">JS Test: Deny POST on /upload/</button>
+	</div>
+
+	<div class="case">
+		<h2>3.3 Autoindex Toggle Proof</h2>
+		<p class="desc">Requirement: Proving directory listing can be enabled or disabled per route.</p>
+		<a href="/upload/" target="_blank" class="btn" style="background:#27ae60">Autoindex ON (/upload/)</a>
+		<a href="/cgi-bin/" target="_blank" class="btn" style="background:#7f8c8d">Autoindex OFF (/cgi-bin/)</a>
+	</div>
+
+	<div class="case">
+		<h2>3.4 UNKNOWN Requests</h2>
+		<p class="desc">Requirement: "UNKNOWN requests should not result in a crash."</p>
+		<code>printf "JACKISBACK / HTTP/1.1\r\nHost: localhost\r\n\r\n" | nc localhost 8080</code>
+	</div>
+
+	<div class="case">
+		<h2>3.5 Network Tab (Headers)</h2>
+		<p class="desc">Requirement: "Open the network tab... Look at the request header and response header."</p>
+		<a href="/" class="btn">Inspect Headers (F12)</a>
+	</div>
+
+	<h3>4. Virtual Hosting</h3>
+
+	<div class="case">
+		<h2>4.1 Multiple Websites (Port Issues)</h2>
+		<p class="desc">Requirement: "Set up multiple websites on different interfaces and ports" and "Multiple websites on the same interface:port".</p>
+		<p>Test Virtual Hosting (Header-based) on Port 8081:</p>
+		<code>curl -i -H "Host: testsite.com" http://127.0.0.1:8081/</code>
+		<code>curl -i -H "Host: testsite2.com" http://127.0.0.1:8081/</code>
+	</div>
+
+	<h3>5. CGI & Dynamic Content</h3>
+
+	<div class="case">
+		<h2>5.1 CGI GET and POST</h2>
+		<p class="desc">Requirement: "Test the CGI with the 'GET' and 'POST' methods."</p>
+		<a href="/cgi-bin/eval_demo.py?val=GET_TEST" class="btn">CGI GET</a>
+		<form action="/cgi-bin/eval_demo.py" method="POST" style="margin-top:10px;">
+			<input type="hidden" name="val" value="POST_TEST">
+			<button type="submit" class="btn">CGI POST</button>
+		</form>
+	</div>
+
+	<div class="case">
+		<h2>5.2 CGI Errors & Resilience</h2>
+		<p class="desc">Requirement: "CGI files containing errors... infinite loop... server should never crash."</p>
+		<a href="/cgi-bin/crash.py" class="btn" style="background:#e67e22">Trigger 500 Error</a>
+		<a href="/cgi-bin/infinite.py" class="btn" style="background:#e67e22">Trigger Infinite Loop</a>
+	</div>
+
+	<div class="case" style="border-top: 2px solid #f1c40f;">
+		<h2>5.3 Bonus: Cookies & Sessions</h2>
+		<p class="desc">Requirement: "Functional session and cookie system."</p>
+		<iframe src="/cgi-bin/eval_demo.py" style="width: 100%; height: 80px; border: 1px solid #ddd;"></iframe>
+	</div>
+
+	<script>
+		function loadFiles()
+		{
+			const select = document.getElementById('file-select');
+			select.innerHTML = '<option value="">-- Loading... --</option>';
+
+			fetch('/upload/')
+				.then(response => response.text())
+				.then(html =>
+				{
+					const parser = new DOMParser();
+					const doc = parser.parseFromString(html, 'text/html');
+					const links = doc.querySelectorAll('a');
+
+					select.innerHTML = '<option value="">-- Select a file --</option>';
+
+					links.forEach(link =>
+					{
+						const filename = link.getAttribute('href');
+						if (filename && filename !== '../' && filename !== '/')
+						{
+							const option = document.createElement('option');
+							option.value = filename;
+							option.textContent = filename;
+							select.appendChild(option);
+						}
+					});
+				})
+				.catch(err =>
+				{
+					select.innerHTML = '<option value="">Error loading files</option>';
+				});
+		}
+
+		function testDelete()
+		{
+			const select = document.getElementById('file-select');
+			const filename = select.value;
+			const statusTarget = document.getElementById('delete-status');
+
+			if (!filename)
+			{
+				statusTarget.innerText = "Please select a file first.";
+				statusTarget.style.color = "orange";
+				return;
+			}
+
+			statusTarget.innerText = "Attempting DELETE on /upload/" + filename + "...";
+
+			fetch('/upload/' + filename,
+				{
+					method: 'DELETE'
+				})
+				.then(response =>
+				{
+					statusTarget.innerText = 'Server Responded: ' + response.status + ' ' + response.statusText;
+					statusTarget.style.color = response.ok ? "green" : "red";
+					if (response.ok)
+					{
+						loadFiles();
+					}
+				})
+				.catch(err =>
+				{
+					statusTarget.innerText = 'Error: ' + err.message;
+					statusTarget.style.color = "red";
+				});
+		}
+
+		function testLimitExcept()
+		{
+			fetch('/upload/',
+				{
+					method: 'POST'
+				})
+				.then(response =>
+				{
+					alert('Response Status: ' + response.status + '\nRequirement: limit_except (Expected 405/403)');
+				})
+				.catch(err => alert('Error: ' + err));
+		}
+	</script>
+</body>
+
+</html>
