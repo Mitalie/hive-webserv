@@ -72,6 +72,10 @@ echo -e "Testing Timeout (Wait 5s)..."
 CODE504=$(curl -s -o /dev/null -w "%{http_code}" "$SERVER/cgi-bin/infinite.py")
 echo -e "Timeout (504):		$([[ "$CODE504" == "504" ]] && echo -ne "${GREEN}PASS${NC}" || echo -ne "${RED}FAIL ($CODE504)${NC}")	> Requests infinite loop script; 504 Gateway Timeout proves the server terminates hanging handlers."
 
+echo -e "\n${CYAN}[6] CLEANUP${NC}"
+rm -f c.txt
+echo -e "Cleanup:		${GREEN}DONE${NC} > Temporary session file c.txt removed."
+
 echo -e "\n${CYAN}[6] PORT CONFLICT (MANUAL TEST)${NC}"
 echo -e "Run: ./webserv config/webserv.conf"
 echo -e "Expect: 'Error: bind: Address already in use' and clean exit."

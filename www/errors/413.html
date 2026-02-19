@@ -3,7 +3,7 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>500 - Internal Server Error</title>
+	<title>413 - Payload Too Large</title>
 	<link href="https://fonts.googleapis.com/css2?family=Inconsolata&display=swap" rel="stylesheet">
 	<style>
 		body
@@ -101,14 +101,14 @@
 </head>
 <body>
 
-	<h1>500 Internal Server Error</h1>
+	<h1>413 Payload Too Large</h1>
 
 	<div class="case">
-		<h2>Our Bad.</h2>
+		<h2>That File is Too Thicc.</h2>
 		<div class="desc">
-			<b>Diagnosis:</b> Something went catastrophically wrong inside our C++ code.<br><br>
-			<b>Status:</b> We probably failed an <code>execve</code>, ran out of memory, or dropped a critical exception. The server survived, but your request did not.<br><br>
-			<b>Suggestion:</b> Check the terminal output for stack traces.
+			<b>Diagnosis:</b> You exceeded the <code>client_max_body_size</code> limit.<br><br>
+			<b>Status:</b> Our server is on a strict data diet. We cannot swallow a payload this massive without choking.<br><br>
+			<b>Suggestion:</b> Trim down your file size or update the config limits.
 		</div>
 		<div style="text-align: center;">
 			<a href="/" class="btn">Return to Dashboard</a>

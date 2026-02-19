@@ -3,7 +3,7 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>500 - Internal Server Error</title>
+	<title>504 - Gateway Timeout</title>
 	<link href="https://fonts.googleapis.com/css2?family=Inconsolata&display=swap" rel="stylesheet">
 	<style>
 		body
@@ -101,14 +101,14 @@
 </head>
 <body>
 
-	<h1>500 Internal Server Error</h1>
+	<h1>504 Gateway Timeout</h1>
 
 	<div class="case">
-		<h2>Our Bad.</h2>
+		<h2>Infinite Loop Detected.</h2>
 		<div class="desc">
-			<b>Diagnosis:</b> Something went catastrophically wrong inside our C++ code.<br><br>
-			<b>Status:</b> We probably failed an <code>execve</code>, ran out of memory, or dropped a critical exception. The server survived, but your request did not.<br><br>
-			<b>Suggestion:</b> Check the terminal output for stack traces.
+			<b>Diagnosis:</b> The CGI script took way too long to respond.<br><br>
+			<b>Status:</b> It is either stuck in a <code>while(true)</code> loop or thinking deeply about the meaning of life. Our event loop lost patience and killed it.<br><br>
+			<b>Suggestion:</b> Optimize your scripts to run faster than the server timeout limit.
 		</div>
 		<div style="text-align: center;">
 			<a href="/" class="btn">Return to Dashboard</a>
