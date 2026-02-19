@@ -45,8 +45,7 @@ public:
 			   ReadWriteFD::ReadCallback stdoutReadCallback,
 			   ReadWriteFD::EofCallback stdoutEofCallback,
 			   ReadWriteFD::ErrorCallback stdoutErrorCallback,
-			   ReadWriteFD::DrainCallback stdinDrainCallback,
-			   ReadWriteFD::ErrorCallback stdinErrorCallback);
+			   ReadWriteFD::DrainCallback stdinDrainCallback);
 
 	~CgiHandler();
 	/*

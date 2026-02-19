@@ -32,8 +32,7 @@ CgiHandler::CgiHandler(RequestHeader header,
 					   ReadWriteFD::ReadCallback stdoutReadCallback,
 					   ReadWriteFD::EofCallback stdoutEofCallback,
 					   ReadWriteFD::ErrorCallback stdoutErrorCallback,
-					   ReadWriteFD::DrainCallback stdinDrainCallback,
-					   ReadWriteFD::ErrorCallback stdinErrorCallback)
+					   ReadWriteFD::DrainCallback stdinDrainCallback)
 	: header(std::move(header)),
 	  scriptPath(std::move(scriptPath)),
 	  pathInfo(std::move(pathInfo)),
@@ -91,7 +90,13 @@ CgiHandler::CgiHandler(RequestHeader header,
 		stdoutReadCallback,
 		stdoutEofCallback,
 		nullptr, // no drainCallback
-		stdoutErrorCallback);
+		[this, stdoutErrorCallback]
+		{
+			if (stdoutStream)
+				stdoutStream.reset();
+			if (stdoutErrorCallback)
+				stdoutErrorCallback();
+		});
 	pipeOut[0] = -1;
 
 	stdinStream = std::make_unique<ReadWriteFD>(
@@ -103,7 +108,11 @@ CgiHandler::CgiHandler(RequestHeader header,
 			// Clean delegate to member function
 			this->onStdinDrain(bufferSize, stdinDrainCallback);
 		},
-		stdinErrorCallback);
+		[this]
+		{
+			if (stdinStream)
+				stdinStream.reset();
+		});
 	pipeIn[1] = -1;
 
 	stdoutStream->startReading();
