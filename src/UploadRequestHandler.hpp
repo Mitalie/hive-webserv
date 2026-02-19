@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstddef>
-#include <fstream>
 #include <span>
 #include <string>
 
@@ -9,6 +8,7 @@
 #include "IRequestHandler.hpp"
 #include "IRequestManager.hpp"
 #include "RequestHeader.hpp"
+#include "UnixFD.hpp"
 
 class UploadRequestHandler : public IRequestHandler
 {
@@ -23,11 +23,12 @@ private:
 	IRequestManager &manager_;
 	RequestHeader header_;
 	RouteConfig route_;
-	std::ofstream outFile_;
+	UnixFD outFile_;
 	bool done_ = false;
-	bool fileOpen_ = false;
+	bool fileDataStarted_ = false;
 	std::string targetPath_;
 	std::string boundary_;
 	std::string multipartBuffer_;
-	void uploadComplete(const std::string &message);
+	void writeData();
+	void uploadComplete();
 };
