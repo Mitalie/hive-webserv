@@ -110,7 +110,7 @@ std::filesystem::path resolveRoutePath(const std::string &urlPath, const RouteCo
 	std::string relativePath = urlPath.substr(route.path.length());
 	if (relativePath.empty() || relativePath[0] != '/')
 		relativePath = "/" + relativePath;
-	return std::filesystem::path(route.root) / relativePath.substr(1);
+	return std::filesystem::path(route.root).concat(relativePath);
 }
 
 // Helper: Check if file has CGI extension
