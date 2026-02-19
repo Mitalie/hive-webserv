@@ -16,6 +16,7 @@ enum class LocationDirective
 	UploadStore,
 	Methods,
 	CgiExt,
+	CgiBrokenPathinfo,
 	ClientMaxBodySize,
 	Unknown
 };
@@ -28,6 +29,7 @@ inline const std::unordered_map<std::string, LocationDirective> locationDirectiv
 	{"upload_store", LocationDirective::UploadStore},
 	{"methods", LocationDirective::Methods},
 	{"cgi_ext", LocationDirective::CgiExt},
+	{"cgi_broken_pathinfo", LocationDirective::CgiBrokenPathinfo},
 	{"client_max_body_size", LocationDirective::ClientMaxBodySize}};
 
 enum class ServerDirective
@@ -58,6 +60,7 @@ struct RouteConfig
 	int redirectCode;									// Redirect status code (0 if none)
 	std::string redirect;								// Redirect URL (empty if none)
 	std::map<std::string, std::string> cgiInterpreters; // File extension -> interpreter path
+	bool cgiBrokenPathinfo = false;						// Support 42 cgi_tester with broken SCRIPT_NAME/PATH_INFO handling
 	std::string uploadStore;							// Directory for uploaded files
 	bool isDirectoryRoute;
 	std::optional<size_t> clientMaxBodySize;

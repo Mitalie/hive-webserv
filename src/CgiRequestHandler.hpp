@@ -51,6 +51,7 @@ private:
 	std::string scriptPath_;
 	std::string pathInfo_;
 	std::string interpreter_;
+	bool brokenPathinfo_;
 
 	// Request body buffering (for chunked transfer from client)
 	bool bufferingRequestBody_ = false; // True if client used chunked encoding

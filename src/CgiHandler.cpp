@@ -16,6 +16,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include "Config.hpp"
 #include "Poll.hpp"
 #include "ReadWriteFD.hpp"
 #include "RequestHeader.hpp"
@@ -27,6 +28,7 @@ CgiHandler::CgiHandler(RequestHeader header,
 					   std::string interpreterPath,
 					   std::string clientIp,
 					   const HostPort &hostPort,
+					   bool brokenPathinfo,
 					   ReadWriteFD::ReadableDataCallback stdoutReadCallback,
 					   ReadWriteFD::ReadableEofCallback stdoutEofCallback,
 					   ReadWriteFD::ReadableErrorCallback stdoutErrorCallback,
@@ -38,6 +40,7 @@ CgiHandler::CgiHandler(RequestHeader header,
 	  interpreterPath(std::move(interpreterPath)),
 	  clientIp(std::move(clientIp)),
 	  hostPort(hostPort),
+	  brokenPathinfo(brokenPathinfo),
 	  pid(-1),
 	  inputFinished(false),
 	  currentStdinQueueSize(0)
@@ -269,6 +272,16 @@ std::vector<std::string> CgiHandler::createEnvVariables(const std::string &scrip
 	// Adjust SCRIPT_NAME by removing PATH_INFO if present
 	if (!pathInfo.empty() && scriptNameURI.size() >= pathInfo.size())
 		scriptNameURI = scriptNameURI.substr(0, scriptNameURI.size() - pathInfo.size());
+
+	if (brokenPathinfo)
+	{
+		// Support 42 cgi_tester with broken PATH_INFO handling
+		// We're not sure what exactly it expects, but it seems to accept any
+		// value for PATH_INFO if SCRIPT_NAME is empty/missing, and no value
+		// that we managed come up with SCRIPT_NAME is set.
+		pathInfo = scriptNameURI;
+		scriptNameURI = "";
+	}
 
 	env.push_back("REQUEST_METHOD=" + header.method());
 	env.push_back("SERVER_PROTOCOL=HTTP/1.1");

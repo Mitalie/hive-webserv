@@ -41,6 +41,7 @@ public:
 			   std::string interpreterPath,
 			   std::string clientIp,
 			   const HostPort &hostPort,
+			   bool brokenPathinfo,
 			   ReadWriteFD::ReadableDataCallback stdoutReadCallback,
 			   ReadWriteFD::ReadableEofCallback stdoutEofCallback,
 			   ReadWriteFD::ReadableErrorCallback stdoutErrorCallback,
@@ -83,6 +84,7 @@ private:
 	std::string interpreterPath;
 	std::string clientIp;
 	const HostPort &hostPort;
+	bool brokenPathinfo;
 
 	CallbackQueue::CallbackOwner cbOwner;
 
