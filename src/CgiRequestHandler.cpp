@@ -16,7 +16,6 @@
 #include "Config.hpp"
 #include "HeaderFields.hpp"
 #include "IRequestManager.hpp"
-#include "ReadWriteFD.hpp"
 #include "RequestHeader.hpp"
 
 CgiRequestHandler::CgiRequestHandler(IRequestManager &manager, const RequestHeader &header, const RouteConfig &route, const std::string &scriptPath, const std::string &pathInfo)
@@ -79,7 +78,7 @@ void CgiRequestHandler::launchCgiProcess()
 					manager_.setReadingBody(true);
 			},
 			// Ignore child closing std in pipe.
-			ReadWriteFD::WritableErrorCallback{});
+			nullptr);
 
 		// Use the existing checkTimeout function you already have.
 		// No new variables, just triggering your existing logic.

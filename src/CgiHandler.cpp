@@ -29,11 +29,11 @@ CgiHandler::CgiHandler(RequestHeader header,
 					   std::string clientIp,
 					   const HostPort &hostPort,
 					   bool brokenPathinfo,
-					   ReadWriteFD::ReadableDataCallback stdoutReadCallback,
-					   ReadWriteFD::ReadableEofCallback stdoutEofCallback,
-					   ReadWriteFD::ReadableErrorCallback stdoutErrorCallback,
-					   ReadWriteFD::WritableDrainCallback stdinDrainCallback,
-					   ReadWriteFD::WritableErrorCallback stdinErrorCallback)
+					   ReadWriteFD::ReadCallback stdoutReadCallback,
+					   ReadWriteFD::EofCallback stdoutEofCallback,
+					   ReadWriteFD::ErrorCallback stdoutErrorCallback,
+					   ReadWriteFD::DrainCallback stdinDrainCallback,
+					   ReadWriteFD::ErrorCallback stdinErrorCallback)
 	: header(std::move(header)),
 	  scriptPath(std::move(scriptPath)),
 	  pathInfo(std::move(pathInfo)),
@@ -90,16 +90,14 @@ CgiHandler::CgiHandler(RequestHeader header,
 		UnixFD(pipeOut[0]),
 		stdoutReadCallback,
 		stdoutEofCallback,
-		stdoutErrorCallback,
-		ReadWriteFD::WritableDrainCallback{},
-		ReadWriteFD::WritableErrorCallback{});
+		nullptr, // no drainCallback
+		stdoutErrorCallback);
 	pipeOut[0] = -1;
 
 	stdinStream = std::make_unique<ReadWriteFD>(
 		UnixFD(pipeIn[1]),
-		ReadWriteFD::ReadableDataCallback{},
-		ReadWriteFD::ReadableEofCallback{},
-		ReadWriteFD::ReadableErrorCallback{},
+		nullptr, // no readCallback
+		nullptr, // no eofCallback
 		[this, stdinDrainCallback](size_t bufferSize)
 		{
 			// Clean delegate to member function
@@ -128,7 +126,7 @@ CgiHandler::~CgiHandler()
 	}
 }
 
-void CgiHandler::onStdinDrain(size_t bufferSize, ReadWriteFD::WritableDrainCallback originalCallback)
+void CgiHandler::onStdinDrain(size_t bufferSize, ReadWriteFD::DrainCallback originalCallback)
 {
 	// Update local tracking
 	this->currentStdinQueueSize = bufferSize;
