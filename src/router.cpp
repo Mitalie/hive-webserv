@@ -110,7 +110,7 @@ std::filesystem::path resolveRoutePath(const std::string &urlPath, const RouteCo
 	std::string relativePath = urlPath.substr(route.path.length());
 	if (relativePath.empty() || relativePath[0] != '/')
 		relativePath = "/" + relativePath;
-	return std::filesystem::path(route.root) / relativePath.substr(1);
+	return std::filesystem::path(route.root).concat(relativePath);
 }
 
 // Helper: Check if file has CGI extension
@@ -223,16 +223,10 @@ std::unique_ptr<IRequestHandler> handleRequestForRoute(
 	std::string segment;
 	while (true)
 	{
-		if (!isPathWithinRoot(current, route.root))
-			manager.onRequestError(403);
-
 		// Check for CGI match (Priority over existence for "Allow Nonexistent")
-		if (hasCgiExtension(current, route.cgiInterpreters))
+		// If it exists as a directory, we must continue traversing (it's not the script)
+		if (hasCgiExtension(current, route.cgiInterpreters) && !std::filesystem::is_directory(current))
 		{
-			// If it exists as a directory, we must continue traversing (it's not the script)
-			if (std::filesystem::exists(current) && std::filesystem::is_directory(current))
-				continue;
-
 			// Extract PATH_INFO from remaining segments
 			std::string pathInfo;
 			std::string remainder;
@@ -245,11 +239,15 @@ std::unique_ptr<IRequestHandler> handleRequestForRoute(
 			// Pass pathInfo to constructor
 			return std::make_unique<CgiRequestHandler>(manager, header, route, current.string(), pathInfo);
 		}
+
 		if (!std::getline(ss, segment, '/'))
 			break;
 		if (segment.empty())
 			continue;
 		current /= segment;
+
+		if (!isPathWithinRoot(current, route.root))
+			manager.onRequestError(403);
 	}
 
 	// Fallback: If traversal finished without returning, use the full resolved path.
