@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>502 - Bad Gateway</title>
+	<link href="https://fonts.googleapis.com/css2?family=Inconsolata&display=swap" rel="stylesheet">
+	<style>
+		body
+		{
+			font-family: 'Candara', sans-serif;
+			line-height: 1.5;
+			color: #eee;
+			max-width: 900px;
+			margin: 0 auto;
+			padding: 20px;
+			background: #1e1e1e;
+			font-size: 14px;
+			text-align: center;
+		}
+
+		h1
+		{
+			color: cyan;
+			border-bottom: 2px solid cyan;
+			padding-bottom: 10px;
+			font-size: 32px;
+			margin-top: 50px;
+		}
+
+		.case
+		{
+			background: #2d2d2d;
+			padding: 30px;
+			margin: 40px auto;
+			border-radius: 6px;
+			box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+			border-left: 4px solid cyan;
+			max-width: 600px;
+			text-align: left;
+		}
+
+		.case h2
+		{
+			margin-top: 0;
+			font-size: 20px;
+			color: cyan;
+		}
+
+		.desc
+		{
+			font-size: 15px;
+			margin-bottom: 20px;
+			background: #383838;
+			padding: 15px;
+			border-radius: 4px;
+			border: 1px solid #444;
+		}
+
+		.desc b
+		{
+			color: inherit;
+		}
+
+		.btn
+		{
+			display: inline-block;
+			background: #cc7a00;
+			color: white;
+			width: 200px;
+			height: 40px;
+			line-height: 40px;
+			text-align: center;
+			text-decoration: none;
+			border-radius: 4px;
+			font-weight: bold;
+			border: none;
+			cursor: pointer;
+			transition: opacity 0.2s;
+			font-size: 14px;
+			padding: 0;
+			margin: 5px 0;
+		}
+
+		.btn:hover
+		{
+			opacity: 0.8;
+		}
+
+		code
+		{
+			background: #111;
+			color: magenta;
+			padding: 2px 8px;
+			border-radius: 3px;
+			display: inline-block;
+			font-family: 'Inconsolata', monospace;
+			font-size: 14px;
+		}
+	</style>
+</head>
+<body>
+
+	<h1>502 Bad Gateway</h1>
+
+	<div class="case">
+		<h2>The Script Died.</h2>
+		<div class="desc">
+			<b>Diagnosis:</b> We spawned a CGI process, and it betrayed us by crashing before sending HTTP headers.<br><br>
+			<b>Status:</b> The pipe broke. The script is dead. We are just the messenger.<br><br>
+			<b>Suggestion:</b> Fix your Python/Bash script logic.
+		</div>
+		<div style="text-align: center;">
+			<a href="/" class="btn">Return to Dashboard</a>
+		</div>
+	</div>
+
+</body>
+</html>
