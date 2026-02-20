@@ -22,12 +22,6 @@ public:
 
 	using Callback = std::function<void()>;
 
-	/*
-		Closes all file descriptors currently tracked by Poll (except stdin/out/err).
-		Crucial for child processes to avoid inheriting open server sockets.
-	*/
-	static void closeAllRegisteredFds();
-
 	class FDs // Poll FD management, intended for use by UnixFD class only
 	{
 		friend class UnixFD; // Allow UnixFD to call the private functions

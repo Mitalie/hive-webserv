@@ -17,28 +17,26 @@ class ReadWriteFD
 {
 public:
 	/*
-		ReadableDataCallback is called whenever data is read from the file, and
+		ReadCallback is called whenever data is read from the file, and
 		receives a view of the data chunk that was just read. The data is not
 		retained, so the user callback must process or store the entire chunk.
 	*/
-	using ReadableDataCallback = std::function<void(std::span<const char> data)>;
-	using ReadableEofCallback = std::function<void()>;
-	using ReadableErrorCallback = std::function<void()>;
+	using ReadCallback = std::function<void(std::span<const char> data)>;
+	using EofCallback = std::function<void()>;
 	/*
-		WritableDrainCallback is called whenever queued data is written to the
+		DrainCallback is called whenever queued data is written to the
 		file, and receives the remaining size of the queue. If the user halted
 		processing to limit the size of the queue, it might now want to resume.
 	*/
-	using WritableDrainCallback = std::function<void(size_t bufferSize)>;
-	using WritableErrorCallback = std::function<void()>;
+	using DrainCallback = std::function<void(size_t bufferSize)>;
+	using ErrorCallback = std::function<void()>;
 
 	ReadWriteFD(
 		UnixFD &&fd,
-		ReadableDataCallback readCallback,
-		ReadableEofCallback readEofCallback,
-		ReadableErrorCallback readErrorCallback,
-		WritableDrainCallback writeCallback,
-		WritableErrorCallback writeErrorCallback);
+		ReadCallback readCallback,
+		EofCallback eofCallback,
+		DrainCallback drainCallback,
+		ErrorCallback errorCallback);
 	ReadWriteFD(const ReadWriteFD &other) = delete;
 	ReadWriteFD &operator=(const ReadWriteFD &other) = delete;
 	~ReadWriteFD();
@@ -66,16 +64,13 @@ public:
 private:
 	UnixFD fd;
 
-	ReadableDataCallback readCallback;
-	ReadableEofCallback readEofCallback;
-	ReadableErrorCallback readErrorCallback;
-	void onReadable();
-
+	ReadCallback readCallback;
+	EofCallback eofCallback;
+	DrainCallback drainCallback;
+	ErrorCallback errorCallback;
 	std::vector<char> writeBuffer;
-	WritableDrainCallback writeCallback;
-	WritableErrorCallback writeErrorCallback;
-	void onWritable();
 
-	// For POLLERR
+	void onReadable();
+	void onWritable();
 	void onError();
 };

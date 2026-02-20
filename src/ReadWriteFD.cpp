@@ -11,17 +11,15 @@
 
 ReadWriteFD::ReadWriteFD(
 	UnixFD &&fd,
-	ReadableDataCallback readCallback,
-	ReadableEofCallback readEofCallback,
-	ReadableErrorCallback readErrorCallback,
-	WritableDrainCallback writeCallback,
-	WritableErrorCallback writeErrorCallback)
+	ReadCallback readCallback,
+	EofCallback eofCallback,
+	DrainCallback drainCallback,
+	ErrorCallback errorCallback)
 	: fd(std::move(fd)),
 	  readCallback(std::move(readCallback)),
-	  readEofCallback(std::move(readEofCallback)),
-	  readErrorCallback(std::move(readErrorCallback)),
-	  writeCallback(std::move(writeCallback)),
-	  writeErrorCallback(std::move(writeErrorCallback))
+	  eofCallback(std::move(eofCallback)),
+	  drainCallback(std::move(drainCallback)),
+	  errorCallback(std::move(errorCallback))
 {
 	this->fd.addToPoll(
 		[this]()
@@ -53,13 +51,13 @@ void ReadWriteFD::onReadable()
 
 	if (bytesRead < 0)
 	{
-		if (readErrorCallback)
-			readErrorCallback();
+		if (errorCallback)
+			errorCallback();
 	}
 	else if (bytesRead == 0)
 	{
-		if (readEofCallback)
-			readEofCallback();
+		if (eofCallback)
+			eofCallback();
 	}
 	else
 	{
@@ -82,24 +80,21 @@ void ReadWriteFD::onWritable()
 
 	if (bytesWritten < 0)
 	{
-		if (writeErrorCallback)
-			writeErrorCallback();
+		if (errorCallback)
+			errorCallback();
 		return;
 	}
 
 	writeBuffer.erase(writeBuffer.begin(), writeBuffer.begin() + bytesWritten);
-
-	if (writeCallback)
-		writeCallback(writeBuffer.size());
-
 	if (writeBuffer.empty())
 		fd.setWritableInterest(false);
+
+	if (drainCallback)
+		drainCallback(writeBuffer.size());
 }
 
 void ReadWriteFD::onError()
 {
-	if (readErrorCallback)
-		readErrorCallback();
-	if (writeErrorCallback)
-		writeErrorCallback();
+	if (errorCallback)
+		errorCallback();
 }

@@ -75,12 +75,10 @@ ClientHandler::ClientHandler(
 		  { socketReadCallback(newData); },
 		  [this]()
 		  { socketEofCallback(); },
-		  [this]()
-		  { destroyConnection(); }, // Handle Read Error
 		  [this](size_t bufferSize)
 		  { socketWriteCallback(bufferSize); },
 		  [this]()
-		  { destroyConnection(); }) // Handle Write Error
+		  { destroyConnection(); })
 {
 	leftoverData.reserve(socket.maxReadSize);
 	updateWakeup();

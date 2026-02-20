@@ -42,11 +42,10 @@ public:
 			   std::string clientIp,
 			   const HostPort &hostPort,
 			   bool brokenPathinfo,
-			   ReadWriteFD::ReadableDataCallback stdoutReadCallback,
-			   ReadWriteFD::ReadableEofCallback stdoutEofCallback,
-			   ReadWriteFD::ReadableErrorCallback stdoutErrorCallback,
-			   ReadWriteFD::WritableDrainCallback stdinDrainCallback,
-			   ReadWriteFD::WritableErrorCallback stdinErrorCallback);
+			   ReadWriteFD::ReadCallback stdoutReadCallback,
+			   ReadWriteFD::EofCallback stdoutEofCallback,
+			   ReadWriteFD::ErrorCallback stdoutErrorCallback,
+			   ReadWriteFD::DrainCallback stdinDrainCallback);
 
 	~CgiHandler();
 	/*
@@ -73,7 +72,7 @@ private:
 	void cleanupPipes();
 
 	// Extracted logic for handling drain events
-	void onStdinDrain(size_t bufferSize, ReadWriteFD::WritableDrainCallback originalCallback);
+	void onStdinDrain(size_t bufferSize, ReadWriteFD::DrainCallback originalCallback);
 
 	// Helper to translate HTTP headers into CGI environment format
 	std::vector<std::string> createEnvVariables(const std::string &scriptName);

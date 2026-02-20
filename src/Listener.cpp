@@ -7,9 +7,11 @@
 #include <string>
 #include <sstream>
 
+#include <fcntl.h>
 #include <netdb.h>
-#include <sys/socket.h>
 #include <netinet/in.h>
+#include <sys/socket.h>
+#include <unistd.h>
 
 #include "Config.hpp"
 
@@ -45,7 +47,8 @@ Listener::Listener(const HostPort &hostport, AcceptCallback &&onAccept)
 	Addrinfo gaiRes(gaiResRaw);
 	if (gaiErr)
 		throw std::runtime_error(std::string("getaddrinfo: ") + gai_strerror(gaiErr));
-	fd = UnixFD(socket(gaiRes->ai_family, gaiRes->ai_socktype, gaiRes->ai_protocol));
+	int type = gaiRes->ai_socktype | SOCK_CLOEXEC | SOCK_NONBLOCK;
+	fd = UnixFD(socket(gaiRes->ai_family, type, gaiRes->ai_protocol));
 	if (fd < 0)
 		throw std::runtime_error(std::string("socket: ") + strerror(errno));
 	// Set SO_REUSEADDR to allow server to start even if there are connections
@@ -88,6 +91,18 @@ void Listener::onReadable()
 	// connection from the queue. Just wait for another onReadable callback.
 	if (connFd < 0)
 		return;
+
+	if (fcntl(connFd, F_SETFL, O_NONBLOCK) < 0 ||
+		fcntl(connFd, F_SETFD, FD_CLOEXEC) < 0)
+	{
+		// We want all our file descriptors non-blocking and close-on-exec.
+		// If this fails, we can block the entire server waiting for a slow
+		// client, or leak the client connection to all CGI child processes.
+		// Probably better to close the connection instead...
+		// TODO: stderr message?
+		close(connFd);
+		return;
+	}
 
 	// Manual IP to String conversion (IPv4)
 	std::stringstream ss;
