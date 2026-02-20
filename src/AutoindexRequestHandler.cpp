@@ -39,28 +39,35 @@ void AutoindexRequestHandler::notifyResponseBuffer(size_t /*bufferSize*/)
 
 void AutoindexRequestHandler::generateDirectoryListing()
 {
-	// Verify directory exists
-	if (!std::filesystem::is_directory(dir_))
+	try
 	{
-		manager_.onRequestError(404);
-		return;
+		// Verify directory exists
+		if (!std::filesystem::is_directory(dir_))
+		{
+			manager_.onRequestError(404);
+			return;
+		}
+
+		// Generate HTML listing
+		std::string htmlBody = buildHtmlListing();
+
+		// Send response
+		std::string response =
+			"HTTP/1.1 200 OK\r\n"
+			"Content-Type: text/html; charset=utf-8\r\n"
+			"Content-Length: " +
+			std::to_string(htmlBody.size()) + "\r\n" +
+			std::string(manager_.connectionHeader()) +
+			"\r\n" +
+			htmlBody;
+
+		manager_.writeResponseData(response);
+		manager_.onRequestDone();
 	}
-
-	// Generate HTML listing
-	std::string htmlBody = buildHtmlListing();
-
-	// Send response
-	std::string response =
-		"HTTP/1.1 200 OK\r\n"
-		"Content-Type: text/html; charset=utf-8\r\n"
-		"Content-Length: " +
-		std::to_string(htmlBody.size()) + "\r\n" +
-		std::string(manager_.connectionHeader()) +
-		"\r\n" +
-		htmlBody;
-
-	manager_.writeResponseData(response);
-	manager_.onRequestDone();
+	catch (std::filesystem::filesystem_error)
+	{
+		manager_.onRequestError(500);
+	}
 }
 
 std::string AutoindexRequestHandler::buildHtmlListing()

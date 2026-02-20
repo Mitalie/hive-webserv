@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <cstddef>
 #include <memory>
 #include <optional>
@@ -432,9 +433,9 @@ void ClientHandler::terminateRequest(std::optional<int> errorStatus)
 	{
 		// ErrorRequestHandler failed, output minimal error instead of trying again
 		std::string errorBody =
-			"Error handler for status code " +
+			"HTTP 500 Internal Server Error\r\n\r\nError handler for status code " +
 			std::to_string(*currentError) +
-			"failed.";
+			" failed.";
 		writeResponseData(
 			"HTTP/1.1 500 Internal Server Error\r\n"
 			"Content-Type: text/plain\r\n"

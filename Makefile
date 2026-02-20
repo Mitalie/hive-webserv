@@ -37,6 +37,7 @@ SRCS := $(addprefix $(SRCDIR)/,\
 	AutoindexRequestHandler.cpp \
 	DeleteRequestHandler.cpp \
 	Utils.cpp \
+	FsUtil.cpp \
 	MimeTypes.cpp \
 	Signals.cpp \
 	Timeout.cpp \

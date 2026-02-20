@@ -1,6 +1,5 @@
 #include "MimeTypes.hpp"
 
-#include <cctype>
 #include <cstddef>
 #include <fstream>
 #include <sstream>

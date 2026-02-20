@@ -2,14 +2,16 @@
 #include "ErrorRequestHandler.hpp"
 
 #include <cstddef>
-#include <filesystem>
-#include <fstream>
 #include <span>
-#include <sstream>
 #include <string>
+
+#include <fcntl.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "Config.hpp"
 #include "IRequestManager.hpp"
+#include "UnixFD.hpp"
 
 // Constructor without custom error pages (backward compatibility)
 ErrorRequestHandler::ErrorRequestHandler(
@@ -77,24 +79,28 @@ bool ErrorRequestHandler::tryServeCustomErrorPage()
 
 	const std::string &errorPagePath = it->second;
 
-	// Check if the file exists and is readable
-	std::filesystem::path path(errorPagePath);
-	if (!std::filesystem::exists(path) || !std::filesystem::is_regular_file(path))
+	// Open and read the error page. UnixFD destructor will close the file.
+	UnixFD fd(::open(errorPagePath.c_str(), O_RDONLY | O_CLOEXEC));
+	if (fd < 0)
 	{
+		// If custom page is configured but can't be read, fail with 500 instead
+		manager_.onRequestError();
 		return false;
 	}
-
-	// Try to read the file
-	std::ifstream file(errorPagePath, std::ifstream::binary);
-	if (!file.is_open())
+	std::string body;
+	while (true)
 	{
-		return false;
-	}
-
-	std::ostringstream buffer;
-	buffer << file.rdbuf();
-	std::string body = buffer.str();
-	file.close();
+		char buf[4096];
+		ssize_t readBytes = ::read(fd, buf, sizeof buf);
+		if (readBytes == 0)
+			break;
+		if (readBytes < 0)
+		{
+			manager_.onRequestError();
+			return false;
+		}
+		body.append(buf, readBytes);
+	};
 
 	std::string statusText = getStatusText();
 	std::string response =
