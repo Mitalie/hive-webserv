@@ -31,19 +31,59 @@ static std::string sanitizeFilename(std::string filename)
 			continue;
 		switch (c)
 		{
-			case '(':
-			case ')':
-			case '+':
-			case ',':
-			case '-':
-			case '.':
-			case '=':
-			case '_':
-				continue;
+		case '(':
+		case ')':
+		case '+':
+		case ',':
+		case '-':
+		case '.':
+		case '=':
+		case '_':
+			continue;
 		}
 		c = '_';
 	}
 	return filename;
+}
+
+std::string UploadRequestHandler::extractBoundary(const std::string &contentType)
+{
+	size_t pos = contentType.find("boundary=");
+	if (pos == std::string::npos)
+		return "";
+
+	pos += 9;
+	if (pos >= contentType.length())
+		return "";
+
+	std::string boundary;
+	if (contentType[pos] == '"')
+	{
+		for (pos++; pos < contentType.length(); ++pos)
+		{
+			if (contentType[pos] == '\\' && pos + 1 < contentType.length())
+				boundary += contentType[++pos];
+			else if (contentType[pos] == '"')
+				break;
+			else
+				boundary += contentType[pos];
+		}
+		if (pos >= contentType.length())
+			return "";
+	}
+	else
+	{
+		size_t endPos = contentType.find_first_of(" \t;", pos);
+		if (endPos == std::string::npos)
+			boundary = contentType.substr(pos);
+		else
+			boundary = contentType.substr(pos, endPos - pos);
+	}
+
+	if (boundary.empty())
+		return "";
+
+	return "\r\n--" + boundary;
 }
 
 UploadRequestHandler::UploadRequestHandler(IRequestManager &manager, const RequestHeader &header, const RouteConfig &route)
@@ -90,13 +130,12 @@ UploadRequestHandler::UploadRequestHandler(IRequestManager &manager, const Reque
 	}
 
 	// Parse boundary from Content-Type
-	size_t pos = contentType.find("boundary=");
-	if (pos == std::string::npos)
+	boundary_ = extractBoundary(contentType);
+	if (boundary_.empty())
 	{
 		manager_.onRequestError(400);
 		return;
 	}
-	boundary_ = "\r\n--" + contentType.substr(pos + 9);
 
 	// Unique filename logic (document.txt, document(1).txt, ...)
 	targetFilename_ = base + ext;
@@ -220,7 +259,7 @@ void UploadRequestHandler::uploadComplete()
 		"HTTP/1.1 201 Created\r\n"
 		"Content-Type: text/plain\r\n"
 		"Content-Length: " + std::to_string(message.size()) + "\r\n"
-		"Location: " + route_.path + "/" + targetFilename_ +
+		"Location: " + route_.path + "/" + targetFilename_ + "\r\n"
 		"Connection: close\r\n\r\n" +
 		message;
 
