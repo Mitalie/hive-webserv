@@ -81,6 +81,8 @@ ClientHandler::ClientHandler(
 		  [this]()
 		  { destroyConnection(); })
 {
+	// Use default config for error handler until we can determine virtual server
+	currentRequestConfig = &config[0];
 	leftoverData.reserve(socket.maxReadSize);
 	updateWakeup();
 }
@@ -446,5 +448,7 @@ void ClientHandler::terminateRequest(std::optional<int> errorStatus)
 			errorBody);
 		terminateRequest(std::nullopt);
 	}
+	// Reset back to default config until next request picks its virtual server
+	currentRequestConfig = &config[0];
 	updateWakeup();
 }
