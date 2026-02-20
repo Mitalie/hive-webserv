@@ -10,11 +10,11 @@ bool safeIsDir(IRequestManager &manager, const std::filesystem::path &path)
 	{
 		return std::filesystem::is_directory(path);
 	}
-	catch (std::filesystem::filesystem_error)
+	catch (const std::filesystem::filesystem_error &)
 	{
-		// onRequestError should throw, but return a default constructed value to satisfy compiler
+		// onRequestError should throw, but return something to satisfy compiler
 		manager.onRequestError(500);
-		return {};
+		return false;
 	}
 }
 
@@ -24,10 +24,10 @@ bool safeIsRegular(IRequestManager &manager, const std::filesystem::path &path)
 	{
 		return std::filesystem::is_regular_file(path);
 	}
-	catch (std::filesystem::filesystem_error)
+	catch (const std::filesystem::filesystem_error &)
 	{
-		// onRequestError should throw, but return a default constructed value to satisfy compiler
+		// onRequestError should throw, but return something to satisfy compiler
 		manager.onRequestError(500);
-		return {};
+		return false;
 	}
 }
