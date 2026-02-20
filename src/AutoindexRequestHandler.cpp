@@ -54,9 +54,11 @@ void AutoindexRequestHandler::generateDirectoryListing()
 		"HTTP/1.1 200 OK\r\n"
 		"Content-Type: text/html; charset=utf-8\r\n"
 		"Content-Length: " +
-		std::to_string(htmlBody.size()) +
-		"\r\n\r\n" +
+		std::to_string(htmlBody.size()) + "\r\n" +
+		std::string(manager_.connectionHeader()) +
+		"\r\n" +
 		htmlBody;
+
 	manager_.writeResponseData(response);
 	manager_.onRequestDone();
 }

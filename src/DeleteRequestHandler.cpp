@@ -63,8 +63,9 @@ void DeleteRequestHandler::sendResponse(IRequestManager &manager, int code, cons
 		"\r\n"
 		"Content-Type: text/plain\r\n"
 		"Content-Length: " +
-		std::to_string(message.size()) +
-		"\r\n\r\n" +
+		std::to_string(message.size()) + "\r\n" +
+		std::string(manager.connectionHeader()) +
+		"\r\n" +
 		message;
 	manager.writeResponseData(response);
 	manager.onRequestDone();

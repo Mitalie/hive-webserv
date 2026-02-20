@@ -50,4 +50,19 @@ public:
 	// Accessor for the client's IP address and port
 	virtual const std::string &getClientIp() const = 0;
 	virtual const HostPort &getHostPort() const = 0;
+
+	/*
+		Returns the appropriate Connection header line based on keep-alive state.
+	*/
+	std::string_view connectionHeader() const
+	{
+		return shouldKeepAlive() ? "Connection: keep-alive\r\n" : "Connection: close\r\n";
+	}
+
+private:
+	/*
+		Returns true if the connection should be kept alive after the response.
+		Handlers should use this to set the Connection header appropriately.
+	*/
+	virtual bool shouldKeepAlive() const = 0;
 };

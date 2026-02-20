@@ -51,7 +51,8 @@ RedirectRequestHandler::RedirectRequestHandler(IRequestManager &manager, const R
 										"</body></html>";
 
 	response += "Content-Length: " + std::to_string(body.size()) + "\r\n";
-	response += "Connection: close\r\n\r\n";
+	response += manager_.connectionHeader();
+	response += "\r\n";
 	response += body;
 
 	manager_.writeResponseData(response);
