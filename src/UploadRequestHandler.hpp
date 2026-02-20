@@ -32,4 +32,5 @@ private:
 	std::string multipartBuffer_;
 	void writeData();
 	void uploadComplete();
+	std::string extractBoundary(const std::string &contentType);
 };
