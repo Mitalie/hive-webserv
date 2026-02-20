@@ -206,9 +206,12 @@ void CgiRequestHandler::handleCgiOutput(std::span<const char> data)
 			cgiHeaders.set("transfer-encoding", "chunked");
 		}
 
+		cgiHeaders.remove("connection");
+
 		// 4. Send HTTP response: Status Line + Headers + Empty Line
 		manager_.writeResponseData(statusLine);
 		manager_.writeResponseData(cgiHeaders.serialize());
+		manager_.writeResponseData(manager_.connectionHeader());
 		manager_.writeResponseData(std::string_view("\r\n"));
 
 		// 5. Update state

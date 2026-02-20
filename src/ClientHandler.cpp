@@ -121,6 +121,11 @@ const HostPort &ClientHandler::getHostPort() const
 	return hostPort;
 }
 
+bool ClientHandler::shouldKeepAlive() const
+{
+	return keepAlive_;
+}
+
 void ClientHandler::destroyConnection()
 {
 	manager.destroyConnection(*this);
@@ -128,6 +133,13 @@ void ClientHandler::destroyConnection()
 
 void ClientHandler::createRequestHandler(RequestHeader &&header)
 {
+	std::string connection = toLower(header.get("Connection"));
+
+	if (header.version() == "HTTP/1.1")
+		keepAlive_ = (connection.find("close") == std::string::npos);
+	else
+		keepAlive_ = (connection.find("keep-alive") != std::string::npos);
+
 	const ServerConfig &serverConfig = findServerConfig(header, config);
 	currentRequestConfig = &serverConfig;
 	chunked = false;
@@ -388,6 +400,10 @@ void ClientHandler::TerminateRequestException::cleanup() const
 void ClientHandler::terminateRequest(std::optional<int> errorStatus)
 {
 	request = nullptr;
+
+	if (!keepAlive_)
+		terminateConnection = true;
+
 	if (!errorStatus)
 	{
 		// Request handler completed successfully
@@ -424,6 +440,7 @@ void ClientHandler::terminateRequest(std::optional<int> errorStatus)
 			"Content-Type: text/plain\r\n"
 			"Content-Length: " +
 			std::to_string(errorBody.size()) + "\r\n" +
+			std::string(connectionHeader()) +
 			"\r\n" +
 			errorBody);
 		terminateRequest(std::nullopt);

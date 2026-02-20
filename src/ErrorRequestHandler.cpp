@@ -103,9 +103,9 @@ bool ErrorRequestHandler::tryServeCustomErrorPage()
 		"\r\n"
 		"Content-Type: text/html; charset=UTF-8\r\n"
 		"Content-Length: " +
-		std::to_string(body.size()) +
-		"\r\n"
-		"Connection: close\r\n\r\n" +
+		std::to_string(body.size()) + "\r\n" +
+		std::string(manager_.connectionHeader()) +
+		"\r\n" +
 		body;
 	manager_.writeResponseData(response);
 	return true;
@@ -127,9 +127,9 @@ void ErrorRequestHandler::sendDefaultResponse(const std::string &statusText)
 		"\r\n"
 		"Content-Type: text/html; charset=UTF-8\r\n"
 		"Content-Length: " +
-		std::to_string(body.size()) +
-		"\r\n"
-		"Connection: close\r\n\r\n" +
+		std::to_string(body.size()) + "\r\n" +
+		std::string(manager_.connectionHeader()) +
+		"\r\n" +
 		body;
 	manager_.writeResponseData(response);
 }

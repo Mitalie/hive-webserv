@@ -258,9 +258,11 @@ void UploadRequestHandler::uploadComplete()
 	std::string response =
 		"HTTP/1.1 201 Created\r\n"
 		"Content-Type: text/plain\r\n"
-		"Content-Length: " + std::to_string(message.size()) + "\r\n"
-		"Location: " + route_.path + "/" + targetFilename_ + "\r\n"
-		"Connection: close\r\n\r\n" +
+		"Content-Length: " +
+		std::to_string(message.size()) + "\r\n" +
+		"Location: " + route_.path + "/" + targetFilename_ + "\r\n" +
+		std::string(manager_.connectionHeader()) +
+		"\r\n" +
 		message;
 
 	manager_.writeResponseData(response);

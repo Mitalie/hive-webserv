@@ -50,6 +50,7 @@ public:
 	virtual void onRequestError(int errorStatus) override;
 	virtual const std::string &getClientIp() const override;
 	virtual const HostPort &getHostPort() const override;
+	virtual bool shouldKeepAlive() const override;
 
 private:
 	const ListenerConfig &config;
@@ -87,6 +88,7 @@ private:
 	bool readingPaused = false;
 	bool chunked = false;
 	bool useBodyLenMax = false;
+	bool keepAlive_ = true;
 	size_t bodyLen = 0;
 	size_t bodyLenMax = 0;
 	void createRequestHandler(RequestHeader &&header);
