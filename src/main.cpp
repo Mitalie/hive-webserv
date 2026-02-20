@@ -1,3 +1,4 @@
+#include <exception>
 #include <iostream>
 #include <vector>
 
@@ -18,22 +19,44 @@ int main(int argc, char *argv[])
 		std::cerr << "Usage: " << name << " [config file]\n";
 		return -1;
 	}
-	PortServerMap config = parseConfig(argv[1]);
+
+	PortServerMap config;
 	std::vector<ConnectionManager> connManagers;
-	connManagers.reserve(config.size());
-	for (const auto &[hostPort, listenerConfig] : config)
+
+	try
 	{
-		connManagers.emplace_back(hostPort, listenerConfig);
+		config = parseConfig(argv[1]);
+		connManagers.reserve(config.size());
+		for (const auto &[hostPort, listenerConfig] : config)
+		{
+			connManagers.emplace_back(hostPort, listenerConfig);
+		}
 	}
-	while (true)
+	catch (const std::exception &e)
 	{
-		// Signal may arrive between gotExitSignal and poll syscall.
-		// Timeout may expire before or during poll syscall.
-		// Set poll timeout to ensure we react to signals and timeouts reasonably quickly.
-		Poll::doPoll(100);
-		CallbackQueue::handleQueue();
-		TimeoutManager::processTimeouts();
-		if (gotExitSignal())
-			break;
+		std::cerr << "Initialization error: " << e.what() << '\n';
+		return 1;
 	}
+
+	try
+	{
+		while (true)
+		{
+			// Signal may arrive between gotExitSignal and poll syscall.
+			// Timeout may expire before or during poll syscall.
+			// Set poll timeout to ensure we react to signals and timeouts reasonably quickly.
+			Poll::doPoll(100);
+			CallbackQueue::handleQueue();
+			TimeoutManager::processTimeouts();
+			if (gotExitSignal())
+				break;
+		}
+	}
+	catch (const std::exception &e)
+	{
+		std::cerr << "Fatal runtime error: " << e.what() << '\n';
+		return 1;
+	}
+
+	return 0;
 }
