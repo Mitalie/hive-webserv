@@ -12,6 +12,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <utility>
 
 #include "Config.hpp"
 
@@ -85,7 +86,7 @@ void Listener::onReadable()
 	struct sockaddr_in addr;
 	socklen_t addrLen = sizeof(addr);
 
-	int connFd = accept(fd, (struct sockaddr *)&addr, &addrLen);
+	UnixFD connFd(accept(fd, (struct sockaddr *)&addr, &addrLen));
 
 	// Assume that any errors from accept are transient and/or remove the failed
 	// connection from the queue. Just wait for another onReadable callback.
@@ -96,11 +97,10 @@ void Listener::onReadable()
 		fcntl(connFd, F_SETFD, FD_CLOEXEC) < 0)
 	{
 		// We want all our file descriptors non-blocking and close-on-exec.
-		// If this fails, we can block the entire server waiting for a slow
+		// If this fails, we might block the entire server waiting for a slow
 		// client, or leak the client connection to all CGI child processes.
-		// Probably better to close the connection instead...
+		// Probably better to drop the connection... (UnixFD calls close for us)
 		// TODO: stderr message?
-		close(connFd);
 		return;
 	}
 
@@ -109,5 +109,5 @@ void Listener::onReadable()
 	unsigned char *p = (unsigned char *)&addr.sin_addr.s_addr;
 	ss << (int)p[0] << "." << (int)p[1] << "." << (int)p[2] << "." << (int)p[3];
 
-	onAccept(UnixFD(connFd), ss.str());
+	onAccept(std::move(connFd), ss.str());
 }
