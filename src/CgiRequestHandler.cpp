@@ -23,7 +23,8 @@ CgiRequestHandler::CgiRequestHandler(IRequestManager &manager, const RequestHead
 	: manager_(manager),
 	  storedHeader_(header),
 	  scriptPath_(std::filesystem::absolute(scriptPath).string()),
-	  pathInfo_(pathInfo)
+	  pathInfo_(pathInfo),
+	  brokenPathinfo_(route.cgiBrokenPathinfo)
 {
 	// Determine script path and interpreter
 	interpreter_ = findInterpreter(scriptPath_, route);
@@ -58,6 +59,7 @@ void CgiRequestHandler::launchCgiProcess()
 			interpreter_,
 			manager_.getClientIp(),
 			manager_.getHostPort(),
+			brokenPathinfo_,
 			[this](std::span<const char> data)
 			{
 				handleCgiOutput(data);

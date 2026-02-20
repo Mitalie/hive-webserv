@@ -218,6 +218,9 @@ RouteConfig::RouteConfig(Tokenizer &tokenizer)
 		case LocationDirective::CgiExt:
 			handleLocationCgiExt(tokenizer);
 			break;
+		case LocationDirective::CgiBrokenPathinfo:
+			cgiBrokenPathinfo = true;
+			break;
 		case LocationDirective::ClientMaxBodySize:
 			clientMaxBodySize = parseBodySize(tokenizer);
 			break;
