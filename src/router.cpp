@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "Config.hpp"
+#include "FsUtil.hpp"
 #include "IRequestHandler.hpp"
 #include "IRequestManager.hpp"
 #include "RequestHeader.hpp"
@@ -143,10 +144,11 @@ std::unique_ptr<IRequestHandler> handleRequestOnPath(
 		return std::make_unique<DeleteRequestHandler>(manager, path.c_str());
 
 	// 6. Default: serve static file
+
 	bool isRoot = (path == std::filesystem::path(route.root));
 
 	// Check if path is a directory
-	if (std::filesystem::exists(path) && std::filesystem::is_directory(path))
+	if (safeIsDir(manager, path))
 	{
 		if (urlPath.back() != '/')
 			return std::make_unique<RedirectRequestHandler>(manager, header, urlPath + '/', 301);
@@ -155,7 +157,7 @@ std::unique_ptr<IRequestHandler> handleRequestOnPath(
 		if (!route.index.empty())
 		{
 			std::filesystem::path indexPath = path / route.index;
-			if (std::filesystem::exists(indexPath) && std::filesystem::is_regular_file(indexPath))
+			if (safeIsRegular(manager, indexPath))
 				// Index file exists, update path to serve it
 				path = indexPath;
 			else if (route.autoindex)
@@ -180,13 +182,8 @@ std::unique_ptr<IRequestHandler> handleRequestOnPath(
 	}
 
 	// 7. Final File Checks
-	if (!std::filesystem::exists(path) || !std::filesystem::is_regular_file(path))
+	if (!safeIsRegular(manager, path))
 		manager.onRequestError(404);
-
-	auto perms = std::filesystem::status(path).permissions();
-	if ((perms & std::filesystem::perms::owner_read) == std::filesystem::perms::none)
-		// No read permission
-		manager.onRequestError(403); // Forbidden
 
 	return std::make_unique<FileRequestHandler>(manager, path.c_str());
 }
@@ -225,7 +222,7 @@ std::unique_ptr<IRequestHandler> handleRequestForRoute(
 	{
 		// Check for CGI match (Priority over existence for "Allow Nonexistent")
 		// If it exists as a directory, we must continue traversing (it's not the script)
-		if (hasCgiExtension(current, route.cgiInterpreters) && !std::filesystem::is_directory(current))
+		if (hasCgiExtension(current, route.cgiInterpreters) && !safeIsDir(manager, current))
 		{
 			// Extract PATH_INFO from remaining segments
 			std::string pathInfo;

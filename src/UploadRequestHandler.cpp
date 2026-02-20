@@ -12,6 +12,7 @@
 #include <unistd.h>
 
 #include "Config.hpp"
+#include "FsUtil.hpp"
 #include "IRequestManager.hpp"
 #include "RequestHeader.hpp"
 
@@ -102,7 +103,7 @@ UploadRequestHandler::UploadRequestHandler(IRequestManager &manager, const Reque
 	}
 
 	// Ensure upload store exists
-	if (!std::filesystem::exists(route.uploadStore))
+	if (safeIsDir(manager_, route.uploadStore))
 	{
 		manager_.onRequestError(500);
 		return;
