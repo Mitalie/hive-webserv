@@ -26,6 +26,7 @@ private:
 	UnixFD outFile_;
 	bool done_ = false;
 	bool fileDataStarted_ = false;
+	std::string targetFilename_;
 	std::string targetPath_;
 	std::string boundary_;
 	std::string multipartBuffer_;

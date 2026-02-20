@@ -99,12 +99,14 @@ UploadRequestHandler::UploadRequestHandler(IRequestManager &manager, const Reque
 	boundary_ = "\r\n--" + contentType.substr(pos + 9);
 
 	// Unique filename logic (document.txt, document(1).txt, ...)
-	targetPath_ = route_.uploadStore + "/" + base + ext;
+	targetFilename_ = base + ext;
+	targetPath_ = route_.uploadStore + "/" + targetFilename_;
 	int fd = ::open(targetPath_.c_str(), O_CREAT | O_EXCL | O_WRONLY, 0644);
 	int count = 1;
 	while (fd < 0 && errno == EEXIST)
 	{
-		targetPath_ = route_.uploadStore + "/" + base + "(" + std::to_string(count++) + ")" + ext;
+		targetFilename_ = base + "(" + std::to_string(count++) + ")" + ext;
+		targetPath_ = route_.uploadStore + "/" + targetFilename_;
 		fd = ::open(targetPath_.c_str(), O_CREAT | O_EXCL | O_WRONLY, 0644);
 	}
 	if (fd < 0)
@@ -218,6 +220,7 @@ void UploadRequestHandler::uploadComplete()
 		"HTTP/1.1 201 Created\r\n"
 		"Content-Type: text/plain\r\n"
 		"Content-Length: " + std::to_string(message.size()) + "\r\n"
+		"Location: " + route_.path + "/" + targetFilename_ +
 		"Connection: close\r\n\r\n" +
 		message;
 
