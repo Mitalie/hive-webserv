@@ -2,6 +2,7 @@
 
 #include <cerrno>
 #include <cstddef>
+#include <cstdio>
 #include <filesystem>
 #include <span>
 #include <string>
@@ -174,9 +175,9 @@ UploadRequestHandler::UploadRequestHandler(IRequestManager &manager, const Reque
 UploadRequestHandler::~UploadRequestHandler()
 {
 	// Remove file if upload didn't complete successfully.
-	// Can't do anything useful if unlink fails.
+	// Can't do anything useful if remove fails.
 	if (!done_)
-		unlink(targetPath_.c_str());
+		std::remove(targetPath_.c_str());
 }
 
 void UploadRequestHandler::writeData()

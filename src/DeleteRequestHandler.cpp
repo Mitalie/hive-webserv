@@ -2,16 +2,21 @@
 
 #include <cerrno>
 #include <cstddef>
+#include <cstdio>
 #include <span>
 #include <string>
 
-#include <unistd.h>
-
 #include "IRequestManager.hpp"
+#include "FsUtil.hpp"
 
 DeleteRequestHandler::DeleteRequestHandler(IRequestManager &manager, const char *filePath)
 {
-	if (unlink(filePath) == 0)
+	if (safeIsDir(manager, filePath))
+	{
+		manager.onRequestError(403);
+		return;
+	}
+	if (std::remove(filePath) == 0)
 	{
 		sendResponse(manager, 200, "OK", "File deleted successfully");
 	}

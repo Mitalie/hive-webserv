@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <chrono>
 #include <cstddef>
-#include <cstdio>
 #include <exception>
 #include <filesystem>
 #include <iostream>
@@ -100,9 +99,9 @@ size_t CgiRequestHandler::sendChunkedData(std::span<const char> data)
 
 	// Format: SIZE_IN_HEX\r\nDATA\r\n
 	// Convert to hex
-	char hexBuf[32];
-	snprintf(hexBuf, sizeof(hexBuf), "%zx\r\n", data.size());
-	manager_.writeResponseData(std::string(hexBuf));
+	std::stringstream hex;
+	hex << std::hex << data.size() << "\r\n";
+	manager_.writeResponseData(hex.str());
 	manager_.writeResponseData(data);
 	return manager_.writeResponseData(std::string_view("\r\n"));
 }

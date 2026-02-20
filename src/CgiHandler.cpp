@@ -220,9 +220,9 @@ void CgiHandler::setupChild()
 {
 	// Redirect Standard IO
 	if (dup2(pipeIn[0], STDIN_FILENO) < 0)
-		exit(1);
+		std::exit(1);
 	if (dup2(pipeOut[1], STDOUT_FILENO) < 0)
-		exit(1);
+		std::exit(1);
 
 	// Get rid of pipe FDs
 	close(pipeIn[1]);
@@ -236,7 +236,7 @@ void CgiHandler::setupChild()
 	{
 		std::string scriptDir = scriptPath.substr(0, lastSlash);
 		if (chdir(scriptDir.c_str()) < 0)
-			exit(1);
+			std::exit(1);
 	}
 
 	// Prepare Environment and Args
@@ -255,7 +255,7 @@ void CgiHandler::setupChild()
 		nullptr};
 
 	execve(args[0], args, envp.data());
-	exit(1);
+	std::exit(1);
 }
 
 std::vector<std::string> CgiHandler::createEnvVariables(const std::string &scriptName)
