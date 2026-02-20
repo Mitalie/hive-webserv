@@ -51,6 +51,8 @@ PortServerMap parseConfig(const std::string &filename)
 			throw std::runtime_error("ConfigParser: unexpected token outside server block");
 		}
 	}
+	if (serversByPort.empty())
+		throw std::runtime_error("ConfigParser: no server blocks configured!");
 	return serversByPort;
 }
 
