@@ -64,7 +64,7 @@ void AutoindexRequestHandler::generateDirectoryListing()
 		manager_.writeResponseData(response);
 		manager_.onRequestDone();
 	}
-	catch (std::filesystem::filesystem_error)
+	catch (const std::filesystem::filesystem_error &)
 	{
 		manager_.onRequestError(500);
 	}

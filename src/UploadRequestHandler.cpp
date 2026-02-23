@@ -104,7 +104,7 @@ UploadRequestHandler::UploadRequestHandler(IRequestManager &manager, const Reque
 	}
 
 	// Ensure upload store exists
-	if (safeIsDir(manager_, route.uploadStore))
+	if (!safeIsDir(manager_, route.uploadStore))
 	{
 		manager_.onRequestError(500);
 		return;
