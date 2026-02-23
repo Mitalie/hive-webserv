@@ -72,7 +72,7 @@ private:
 	void cleanupPipes();
 
 	// Extracted logic for handling drain events
-	void onStdinDrain(size_t bufferSize, ReadWriteFD::DrainCallback originalCallback);
+	void onStdinDrain(size_t bufferSize);
 
 	// Helper to translate HTTP headers into CGI environment format
 	std::vector<std::string> createEnvVariables(const std::string &scriptName);
@@ -84,6 +84,8 @@ private:
 	std::string clientIp;
 	const HostPort &hostPort;
 	bool brokenPathinfo;
+	ReadWriteFD::ErrorCallback stdoutErrorCallback;
+	ReadWriteFD::DrainCallback stdinDrainCallback;
 
 	CallbackQueue::CallbackOwner cbOwner;
 

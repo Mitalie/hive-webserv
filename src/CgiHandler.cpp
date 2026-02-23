@@ -40,6 +40,8 @@ CgiHandler::CgiHandler(RequestHeader header,
 	  clientIp(std::move(clientIp)),
 	  hostPort(hostPort),
 	  brokenPathinfo(brokenPathinfo),
+	  stdoutErrorCallback(stdoutErrorCallback),
+	  stdinDrainCallback(stdinDrainCallback),
 	  pid(-1),
 	  inputFinished(false),
 	  currentStdinQueueSize(0)
@@ -90,12 +92,12 @@ CgiHandler::CgiHandler(RequestHeader header,
 		stdoutReadCallback,
 		stdoutEofCallback,
 		nullptr, // no drainCallback
-		[this, stdoutErrorCallback]
+		[this]
 		{
 			if (stdoutStream)
 				stdoutStream.reset();
-			if (stdoutErrorCallback)
-				stdoutErrorCallback();
+			if (this->stdoutErrorCallback)
+				this->stdoutErrorCallback();
 		});
 	pipeOut[0] = -1;
 
@@ -103,10 +105,10 @@ CgiHandler::CgiHandler(RequestHeader header,
 		UnixFD(pipeIn[1]),
 		nullptr, // no readCallback
 		nullptr, // no eofCallback
-		[this, stdinDrainCallback](size_t bufferSize)
+		[this](size_t bufferSize)
 		{
 			// Clean delegate to member function
-			this->onStdinDrain(bufferSize, stdinDrainCallback);
+			this->onStdinDrain(bufferSize);
 		},
 		[this]
 		{
@@ -135,14 +137,14 @@ CgiHandler::~CgiHandler()
 	}
 }
 
-void CgiHandler::onStdinDrain(size_t bufferSize, ReadWriteFD::DrainCallback originalCallback)
+void CgiHandler::onStdinDrain(size_t bufferSize)
 {
 	// Update local tracking
 	this->currentStdinQueueSize = bufferSize;
 
 	// 1. Forward to original callback (for backpressure management)
-	if (originalCallback)
-		originalCallback(bufferSize);
+	if (stdinDrainCallback)
+		stdinDrainCallback(bufferSize);
 
 	// 2. Check if we need to close the pipe
 	// We use queueCallback to ensure we don't destroy the ReadWriteFD
